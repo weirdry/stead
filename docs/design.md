@@ -1,0 +1,351 @@
+# Stead Design
+
+## Purpose
+
+`stead` is a personal CLI for reproducible remote-development access to a trusted machine.
+
+It does not replace SSH. It automates the setup, status checks, connection helpers, wake flow, and uninstall flow around normal OpenSSH-based access.
+
+## Core Architecture
+
+```text
+client machine
+  -> optional wake flow
+  -> normal OpenSSH client
+  -> Tailscale/LAN address
+  -> macOS sshd on host
+  -> SSH key authentication
+  -> macOS user policy
+  -> zsh
+  -> tmux session
+```
+
+Layer responsibilities:
+
+```text
+Tailscale = private networking, stable IP, MagicDNS
+OpenSSH/macOS sshd = SSH transport and authentication
+SSH keys/macOS user policy = auth hardening
+tmux/zsh = session continuity
+stead = setup, status, connect, wake, uninstall automation
+```
+
+## Goals
+
+- Configure a macOS host for secure OpenSSH access.
+- Configure client machines to connect to that host.
+- Support normal SSH-over-Tailscale without using Tailscale SSH.
+- Prefer key-based SSH authentication.
+- Disable password SSH on the host once key access is verified.
+- Provide tmux-based session continuity.
+- Provide optional Wake-on-LAN client flow.
+- Be easy to install from a private/local git clone.
+- Be easy to uninstall cleanly.
+
+## Non-Goals
+
+- No Tailscale SSH.
+- No custom SSH daemon.
+- No replacement for OpenSSH.
+- No SSH authentication abstraction.
+- No password storage.
+- No cloud control plane.
+- No public package-manager distribution requirement.
+- No enterprise policy engine.
+
+## Tailscale Policy
+
+`stead` must never enable, configure, depend on, or abstract over Tailscale SSH.
+
+Allowed Tailscale usage:
+
+- Detect whether Tailscale is installed.
+- Detect whether Tailscale appears running.
+- Read Tailscale IP or MagicDNS metadata when safely available.
+- Use that metadata to configure normal OpenSSH targets.
+
+Disallowed Tailscale usage:
+
+- Do not run `tailscale up --ssh`.
+- Do not configure Tailscale SSH.
+- Do not depend on Tailscale SSH ACLs for SSH authorization.
+- Do not expose a `--tailscale-ssh` connect mode.
+- Do not treat Tailscale identity as SSH authentication.
+
+If Tailscale SSH is detected, `stead` should report it as external and unmanaged.
+
+## CLI Shape
+
+```bash
+stead status
+stead doctor
+
+stead host status
+stead host install
+stead host harden
+stead host uninstall
+
+stead client status
+stead client install
+stead client uninstall
+
+stead wake --alias devmac
+stead connect --alias devmac
+stead connect --alias devmac --wake
+```
+
+Example flags:
+
+```bash
+stead host install --user ed --tmux-session main
+stead host harden --user ed --disable-password
+stead client install --alias devmac --user ed --host <tailscale-ip-or-magicdns> --identity ~/.ssh/stead_ed25519
+stead wake --alias devmac
+stead connect --alias devmac --wake
+```
+
+## Host Mode
+
+Host mode manages the trusted macOS machine as the SSH server.
+
+It may:
+
+- Check Remote Login / `sshd` state.
+- Check launchd state for `com.openssh.sshd`.
+- Check effective sshd configuration when permissions allow.
+- Install or verify a public key in `~/.ssh/authorized_keys`.
+- Create a managed sshd config drop-in.
+- Install a managed tmux auto-attach block in `~/.zshrc`.
+- Validate sshd configuration before applying hardening.
+- Refuse to disable password auth until key-based access is verified or explicitly forced.
+
+Target hardening:
+
+```sshconfig
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+AllowUsers ed
+```
+
+Preferred host drop-in:
+
+```text
+/etc/ssh/sshd_config.d/stead.conf
+```
+
+The CLI should prefer owned drop-in files over editing Apple default files directly.
+
+## Client Mode
+
+Client mode manages connection convenience on client machines.
+
+It may:
+
+- Create or update a managed `~/.ssh/config` host entry.
+- Generate or register an SSH identity key.
+- Detect Tailscale IP/MagicDNS metadata.
+- Install optional wake/connect convenience behavior.
+- Run the normal system `ssh` command.
+
+Example generated SSH config:
+
+```sshconfig
+Host devmac
+    HostName <tailscale-ip-or-magicdns>
+    User ed
+    Port 22
+    IdentityFile ~/.ssh/stead_ed25519
+    IdentitiesOnly yes
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+```
+
+`stead connect --alias devmac` should normally exec:
+
+```bash
+ssh devmac
+```
+
+This keeps SSH transparent and leaves authentication to OpenSSH.
+
+## Wake Flow
+
+Client mode may support an optional wake flow:
+
+```bash
+stead wake --alias devmac
+stead connect --alias devmac --wake
+```
+
+The wake flow should:
+
+- Send a Wake-on-LAN magic packet if a MAC address is configured.
+- Wait for the target SSH TCP port to become reachable.
+- Then exec the normal system `ssh` command for connect flows.
+- Never replace or participate in SSH authentication.
+
+Example config:
+
+```toml
+[hosts.devmac]
+hostname = "<tailscale-ip-or-magicdns>"
+user = "ed"
+port = 22
+identity_file = "~/.ssh/stead_ed25519"
+
+[hosts.devmac.wake]
+mac_address = "<host-mac-address>"
+broadcast = "<lan-broadcast-address>"
+timeout = "90s"
+interval = "2s"
+```
+
+Behavior:
+
+```text
+stead wake --alias devmac
+  -> if host:port is already reachable, exit 0
+  -> send Wake-on-LAN packet if mac_address is configured
+  -> poll TCP host:port until reachable
+  -> exit 0 when reachable
+```
+
+```text
+stead connect --alias devmac --wake
+  -> run wake flow
+  -> exec system ssh using the configured alias
+```
+
+If no MAC address is configured, `stead wake` may skip packet sending and only wait for reachability.
+
+## Session Continuity
+
+Host mode may install a managed shell block that attaches SSH sessions to tmux:
+
+```zsh
+# >>> stead managed block: tmux auto-attach
+if command -v tmux >/dev/null 2>&1 && [ -n "$PS1" ] && [ -n "$SSH_CONNECTION" ] && [ -z "$TMUX" ]; then
+    exec tmux new-session -A -s main
+fi
+# <<< stead managed block: tmux auto-attach
+```
+
+This runs after SSH login. It is not part of authentication.
+
+## Safety Model
+
+All edits must be idempotent and reversible.
+
+Use managed marker blocks for user files:
+
+```text
+# >>> stead managed block
+...
+# <<< stead managed block
+```
+
+For system files, prefer owned files that can be removed cleanly:
+
+```text
+/etc/ssh/sshd_config.d/stead.conf
+```
+
+Before disabling password authentication:
+
+1. Install or verify the intended public key.
+2. Validate file permissions.
+3. Validate sshd configuration.
+4. Require a successful key-auth test or explicit `--force`.
+5. Apply hardening.
+6. Print rollback instructions.
+
+`stead uninstall` must remove only what `stead` created.
+
+It should not delete user private keys by default. It may remove managed references and ask before deleting generated keys.
+
+## Install Model
+
+Private/local install is preferred:
+
+```bash
+git clone <private-repo> ~/src/stead
+cd ~/src/stead
+./install.sh
+```
+
+Install targets:
+
+```text
+~/.local/bin/stead
+~/.config/stead/config.toml
+```
+
+No Homebrew formula or public package registry is required.
+
+Updates:
+
+```bash
+cd ~/src/stead
+git pull
+./install.sh
+```
+
+Uninstall:
+
+```bash
+stead client uninstall
+stead host uninstall
+./uninstall.sh
+```
+
+## Recommended Implementation
+
+Use Go.
+
+Reasons:
+
+- Single binary.
+- Good macOS support.
+- Easy private distribution.
+- Good standard library support for file parsing, TCP checks, and process execution.
+- No runtime dependency.
+
+Potential repo layout:
+
+```text
+stead/
+  install.sh
+  uninstall.sh
+  justfile
+  just/
+    build.just
+    check.just
+    install.just
+  docs/
+    design.md
+  cmd/stead/main.go
+  internal/host/
+  internal/client/
+  internal/sshconfig/
+  internal/managedfile/
+  internal/tailscale/
+  internal/wake/
+  internal/tmux/
+  internal/checks/
+```
+
+## Suggested Build Order
+
+1. `stead status`
+2. `stead host status`
+3. `stead client status`
+4. Managed file/block helpers
+5. `stead client install`
+6. `stead connect`
+7. `stead wake`
+8. `stead connect --wake`
+9. `stead host install`
+10. `stead host harden`
+11. `stead uninstall`
