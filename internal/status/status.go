@@ -55,11 +55,18 @@ type snapshot struct {
 	AuthorizedKeys  check
 	Tmux            check
 	TmuxAutoAttach  check
+	Hardening       []finding
 	ConfigPath      string
 	DefaultHostLike bool
 }
 
 type check struct {
+	State  string
+	Detail string
+}
+
+type finding struct {
+	Label  string
 	State  string
 	Detail string
 }
@@ -97,6 +104,7 @@ func collect() snapshot {
 	s.Tmux = lookPath("tmux")
 	s.TmuxAutoAttach = tmuxAutoAttach(filepath.Join(home, ".zshrc"))
 	s.DefaultHostLike = s.SSHDPath.State == "ok" && s.HostSSHConfig.State == "ok"
+	s.Hardening = hostHardening(s)
 
 	return s
 }
@@ -159,6 +167,12 @@ func printHostSections(out io.Writer, s snapshot) {
 	printCheck(out, "tmux", s.Tmux)
 	printCheck(out, "tmux auto-attach", s.TmuxAutoAttach)
 	fmt.Fprintln(out)
+
+	fmt.Fprintf(out, "Host hardening\n")
+	for _, finding := range s.Hardening {
+		printFinding(out, finding)
+	}
+	fmt.Fprintln(out)
 }
 
 func printClientSections(out io.Writer, s snapshot) {
@@ -190,6 +204,14 @@ func printCheck(out io.Writer, label string, c check) {
 		return
 	}
 	fmt.Fprintf(out, "  %s: %s (%s)\n", label, c.State, c.Detail)
+}
+
+func printFinding(out io.Writer, f finding) {
+	if f.Detail == "" {
+		fmt.Fprintf(out, "  %s: %s\n", f.Label, f.State)
+		return
+	}
+	fmt.Fprintf(out, "  %s: %s (%s)\n", f.Label, f.State, f.Detail)
 }
 
 func lookPath(name string) check {
@@ -306,6 +328,184 @@ func findLaunchdValue(text, key string) string {
 }
 
 func sshdActiveLines() check {
+	matches := make([]string, 0)
+	for _, path := range sshdConfigPaths() {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			fields := strings.Fields(trimmed)
+			if len(fields) == 0 {
+				continue
+			}
+			if trackedSSHDKeys()[strings.ToLower(fields[0])] {
+				matches = append(matches, filepath.Base(path)+": "+redactConfigLine(trimmed))
+			}
+		}
+	}
+	if len(matches) == 0 {
+		return check{State: "ok", Detail: "none"}
+	}
+	return check{State: "ok", Detail: strings.Join(matches, "; ")}
+}
+
+func hostHardening(s snapshot) []finding {
+	directives := sshdDirectives()
+	findings := make([]finding, 0, 8)
+
+	findings = append(findings, assessBooleanDirective(
+		"Password auth",
+		directives,
+		"passwordauthentication",
+		finding{State: "ok", Detail: "explicitly disabled"},
+		finding{State: "risk", Detail: "explicitly enabled"},
+		finding{State: "warn", Detail: "not explicitly disabled; likely enabled by OpenSSH/macOS defaults"},
+	))
+
+	findings = append(findings, assessBooleanDirective(
+		"Keyboard-interactive auth",
+		directives,
+		"kbdinteractiveauthentication",
+		finding{State: "ok", Detail: "explicitly disabled"},
+		finding{State: "risk", Detail: "explicitly enabled"},
+		finding{State: "warn", Detail: "not explicitly disabled; password-style prompts may be available"},
+	))
+
+	findings = append(findings, assessBooleanDirective(
+		"Pubkey auth",
+		directives,
+		"pubkeyauthentication",
+		finding{State: "risk", Detail: "explicitly disabled"},
+		finding{State: "ok", Detail: "explicitly enabled"},
+		finding{State: "ok", Detail: "not explicitly configured; likely enabled by OpenSSH defaults"},
+	))
+
+	findings = append(findings, assessRootLogin(directives))
+	findings = append(findings, assessUserRestriction(directives))
+	findings = append(findings, assessKeyMaterial(s.AuthorizedKeys))
+	findings = append(findings, assessSteadHostConfig())
+	findings = append(findings, finding{
+		Label:  "Effective sshd config",
+		State:  "unknown",
+		Detail: "not evaluated yet; future host status should use sshd -T when permissions allow",
+	})
+
+	return findings
+}
+
+func assessBooleanDirective(label string, directives map[string][]string, key string, onNo finding, onYes finding, missing finding) finding {
+	value, ok := lastDirectiveValue(directives, key)
+	if !ok {
+		missing.Label = label
+		return missing
+	}
+
+	switch strings.ToLower(value) {
+	case "no":
+		onNo.Label = label
+		return onNo
+	case "yes":
+		onYes.Label = label
+		return onYes
+	default:
+		return finding{Label: label, State: "unknown", Detail: "configured as " + value}
+	}
+}
+
+func assessRootLogin(directives map[string][]string) finding {
+	value, ok := lastDirectiveValue(directives, "permitrootlogin")
+	if !ok {
+		return finding{
+			Label:  "Root login",
+			State:  "unknown",
+			Detail: "not explicitly configured",
+		}
+	}
+
+	switch strings.ToLower(value) {
+	case "no":
+		return finding{Label: "Root login", State: "ok", Detail: "explicitly disabled"}
+	case "prohibit-password", "without-password", "forced-commands-only":
+		return finding{Label: "Root login", State: "warn", Detail: "restricted but not fully disabled: " + value}
+	case "yes":
+		return finding{Label: "Root login", State: "risk", Detail: "explicitly enabled"}
+	default:
+		return finding{Label: "Root login", State: "unknown", Detail: "configured as " + value}
+	}
+}
+
+func assessUserRestriction(directives map[string][]string) finding {
+	if values, ok := directives["allowusers"]; ok && len(values) > 0 {
+		return finding{Label: "User restriction", State: "ok", Detail: "AllowUsers configured"}
+	}
+	if values, ok := directives["allowgroups"]; ok && len(values) > 0 {
+		return finding{Label: "User restriction", State: "ok", Detail: "AllowGroups configured"}
+	}
+	return finding{
+		Label:  "User restriction",
+		State:  "warn",
+		Detail: "no AllowUsers or AllowGroups directive found",
+	}
+}
+
+func assessKeyMaterial(c check) finding {
+	if c.State != "ok" {
+		return finding{Label: "Authorized keys", State: "warn", Detail: c.State}
+	}
+	if strings.HasPrefix(c.Detail, "0 ") {
+		return finding{Label: "Authorized keys", State: "warn", Detail: "no keys present"}
+	}
+	return finding{Label: "Authorized keys", State: "ok", Detail: c.Detail}
+}
+
+func assessSteadHostConfig() finding {
+	c := fileExists("/etc/ssh/sshd_config.d/stead.conf")
+	if c.State == "ok" {
+		return finding{Label: "Stead host config", State: "ok", Detail: "/etc/ssh/sshd_config.d/stead.conf present"}
+	}
+	if c.State == "missing" {
+		return finding{Label: "Stead host config", State: "missing", Detail: "not installed"}
+	}
+	return finding{Label: "Stead host config", State: "unknown", Detail: c.Detail}
+}
+
+func sshdDirectives() map[string][]string {
+	directives := make(map[string][]string)
+	for _, path := range sshdConfigPaths() {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			fields := strings.Fields(trimmed)
+			if len(fields) < 2 {
+				continue
+			}
+			key := strings.ToLower(fields[0])
+			directives[key] = append(directives[key], strings.Join(fields[1:], " "))
+		}
+	}
+	return directives
+}
+
+func lastDirectiveValue(directives map[string][]string, key string) (string, bool) {
+	values, ok := directives[key]
+	if !ok || len(values) == 0 {
+		return "", false
+	}
+	return values[len(values)-1], true
+}
+
+func sshdConfigPaths() []string {
 	paths := []string{"/etc/ssh/sshd_config"}
 	entries, err := os.ReadDir("/etc/ssh/sshd_config.d")
 	if err == nil {
@@ -315,8 +515,11 @@ func sshdActiveLines() check {
 			}
 		}
 	}
+	return paths
+}
 
-	keys := map[string]bool{
+func trackedSSHDKeys() map[string]bool {
+	return map[string]bool{
 		"allowgroups":                     true,
 		"allowtcpforwarding":              true,
 		"allowusers":                      true,
@@ -344,31 +547,6 @@ func sshdActiveLines() check {
 		"usepam":                          true,
 		"x11forwarding":                   true,
 	}
-
-	matches := make([]string, 0)
-	for _, path := range paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-				continue
-			}
-			fields := strings.Fields(trimmed)
-			if len(fields) == 0 {
-				continue
-			}
-			if keys[strings.ToLower(fields[0])] {
-				matches = append(matches, filepath.Base(path)+": "+redactConfigLine(trimmed))
-			}
-		}
-	}
-	if len(matches) == 0 {
-		return check{State: "ok", Detail: "none"}
-	}
-	return check{State: "ok", Detail: strings.Join(matches, "; ")}
 }
 
 func redactConfigLine(line string) string {
