@@ -17,7 +17,21 @@ import (
 // Run prints a read-only snapshot of the local machine's Stead-relevant state.
 func Run(out io.Writer) error {
 	s := collect()
-	print(out, s)
+	printCombined(out, s)
+	return nil
+}
+
+// RunHost prints read-only host-side status.
+func RunHost(out io.Writer) error {
+	s := collect()
+	printHost(out, s)
+	return nil
+}
+
+// RunClient prints read-only client-side status.
+func RunClient(out io.Writer) error {
+	s := collect()
+	printClient(out, s)
 	return nil
 }
 
@@ -77,19 +91,45 @@ func collect() snapshot {
 	return s
 }
 
-func print(out io.Writer, s snapshot) {
+func printCombined(out io.Writer, s snapshot) {
 	fmt.Fprintln(out, "Stead status")
 	fmt.Fprintln(out)
 
+	printSystem(out, s)
+	printHostSections(out, s)
+	printClientSections(out, s)
+	printStead(out, s)
+}
+
+func printHost(out io.Writer, s snapshot) {
+	fmt.Fprintln(out, "Stead host status")
+	fmt.Fprintln(out)
+
+	printSystem(out, s)
+	printHostSections(out, s)
+	printStead(out, s)
+}
+
+func printClient(out io.Writer, s snapshot) {
+	fmt.Fprintln(out, "Stead client status")
+	fmt.Fprintln(out)
+
+	printSystem(out, s)
+	printClientSections(out, s)
+	printStead(out, s)
+}
+
+func printSystem(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "System\n")
 	fmt.Fprintf(out, "  OS: %s\n", value(s.OS))
 	fmt.Fprintf(out, "  Arch: %s\n", value(s.Arch))
 	fmt.Fprintf(out, "  User: %s\n", value(s.User))
 	fmt.Fprintf(out, "  Home: %s\n", value(s.Home))
 	fmt.Fprintln(out)
+}
 
+func printHostSections(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "OpenSSH\n")
-	printCheck(out, "ssh client", s.SSHPath)
 	printCheck(out, "sshd server", s.SSHDPath)
 	printCheck(out, "sshd_config", s.HostSSHConfig)
 	fmt.Fprintf(out, "  Host-capable: %s\n", yesNo(s.DefaultHostLike))
@@ -101,6 +141,16 @@ func print(out io.Writer, s snapshot) {
 	printCheck(out, "~/.ssh/authorized_keys", s.AuthorizedKeys)
 	fmt.Fprintln(out)
 
+	fmt.Fprintf(out, "Session\n")
+	printCheck(out, "tmux", s.Tmux)
+	fmt.Fprintln(out)
+}
+
+func printClientSections(out io.Writer, s snapshot) {
+	fmt.Fprintf(out, "OpenSSH client\n")
+	printCheck(out, "ssh client", s.SSHPath)
+	fmt.Fprintln(out)
+
 	fmt.Fprintf(out, "Tailscale network metadata\n")
 	printCheck(out, "tailscale CLI", s.TailscalePath)
 	printCheck(out, "Tailscale.app", s.TailscaleApp)
@@ -108,10 +158,12 @@ func print(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "  Tailscale SSH: unmanaged by stead\n")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "Session\n")
-	printCheck(out, "tmux", s.Tmux)
+	fmt.Fprintf(out, "Client SSH config\n")
+	printCheck(out, "~/.ssh/config", s.UserSSHConfig)
 	fmt.Fprintln(out)
+}
 
+func printStead(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "Stead\n")
 	fmt.Fprintf(out, "  Config path: %s\n", s.ConfigPath)
 	fmt.Fprintf(out, "  Mode: read-only status\n")
