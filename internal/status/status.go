@@ -46,10 +46,15 @@ type snapshot struct {
 	TailscaleApp    check
 	TailscaleIP     check
 	HostSSHConfig   check
+	SSHDConfigD     check
+	LaunchdSSHD     check
+	RemoteLogin     check
+	SSHDActiveLines check
 	UserSSHDir      check
 	UserSSHConfig   check
 	AuthorizedKeys  check
 	Tmux            check
+	TmuxAutoAttach  check
 	ConfigPath      string
 	DefaultHostLike bool
 }
@@ -82,10 +87,15 @@ func collect() snapshot {
 	s.TailscaleApp = fileExists("/Applications/Tailscale.app")
 	s.TailscaleIP = tailscaleIP(s.TailscalePath)
 	s.HostSSHConfig = fileExists("/etc/ssh/sshd_config")
+	s.SSHDConfigD = configDropIns("/etc/ssh/sshd_config.d")
+	s.LaunchdSSHD = launchdSSHD()
+	s.RemoteLogin = remoteLogin()
+	s.SSHDActiveLines = sshdActiveLines()
 	s.UserSSHDir = fileExists(filepath.Join(home, ".ssh"))
 	s.UserSSHConfig = fileExists(filepath.Join(home, ".ssh", "config"))
 	s.AuthorizedKeys = authorizedKeys(filepath.Join(home, ".ssh", "authorized_keys"))
 	s.Tmux = lookPath("tmux")
+	s.TmuxAutoAttach = tmuxAutoAttach(filepath.Join(home, ".zshrc"))
 	s.DefaultHostLike = s.SSHDPath.State == "ok" && s.HostSSHConfig.State == "ok"
 
 	return s
@@ -132,6 +142,10 @@ func printHostSections(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "OpenSSH\n")
 	printCheck(out, "sshd server", s.SSHDPath)
 	printCheck(out, "sshd_config", s.HostSSHConfig)
+	printCheck(out, "sshd_config.d", s.SSHDConfigD)
+	printCheck(out, "launchd sshd", s.LaunchdSSHD)
+	printCheck(out, "Remote Login", s.RemoteLogin)
+	printCheck(out, "active config lines", s.SSHDActiveLines)
 	fmt.Fprintf(out, "  Host-capable: %s\n", yesNo(s.DefaultHostLike))
 	fmt.Fprintln(out)
 
@@ -143,6 +157,7 @@ func printHostSections(out io.Writer, s snapshot) {
 
 	fmt.Fprintf(out, "Session\n")
 	printCheck(out, "tmux", s.Tmux)
+	printCheck(out, "tmux auto-attach", s.TmuxAutoAttach)
 	fmt.Fprintln(out)
 }
 
@@ -197,6 +212,206 @@ func fileExists(path string) check {
 		return check{State: "ok", Detail: "directory"}
 	}
 	return check{State: "ok", Detail: fmt.Sprintf("%d bytes", info.Size())}
+}
+
+func configDropIns(path string) check {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return check{State: "missing"}
+		}
+		return check{State: "unknown", Detail: err.Error()}
+	}
+
+	count := 0
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		count++
+		names = append(names, entry.Name())
+	}
+	if count == 0 {
+		return check{State: "ok", Detail: "0 files"}
+	}
+	return check{State: "ok", Detail: fmt.Sprintf("%d file(s): %s", count, strings.Join(names, ", "))}
+}
+
+func launchdSSHD() check {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "launchctl", "print", "system/com.openssh.sshd")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return check{State: "unknown", Detail: shortCommandError(err, out)}
+	}
+
+	text := string(out)
+	state := findLaunchdValue(text, "state")
+	service := findLaunchdValue(text, "service name")
+	socket := "socket unknown"
+	if strings.Contains(text, "passive = 1") {
+		socket = "passive socket"
+	}
+	if state == "" {
+		state = "state unknown"
+	} else {
+		state = "state " + state
+	}
+	if service != "" {
+		return check{State: "ok", Detail: fmt.Sprintf("%s, %s, service %s", state, socket, service)}
+	}
+	return check{State: "ok", Detail: fmt.Sprintf("%s, %s", state, socket)}
+}
+
+func remoteLogin() check {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "launchctl", "print-disabled", "system")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return check{State: "unknown", Detail: shortCommandError(err, out)}
+	}
+
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.Contains(line, `"com.openssh.sshd"`) {
+			continue
+		}
+		switch {
+		case strings.Contains(line, "=> enabled"):
+			return check{State: "ok", Detail: "enabled via launchd"}
+		case strings.Contains(line, "=> disabled"):
+			return check{State: "disabled", Detail: "disabled via launchd"}
+		default:
+			return check{State: "unknown", Detail: line}
+		}
+	}
+
+	return check{State: "unknown", Detail: "com.openssh.sshd not listed"}
+}
+
+func findLaunchdValue(text, key string) string {
+	prefix := key + " = "
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimSpace(strings.TrimPrefix(line, prefix))
+		}
+	}
+	return ""
+}
+
+func sshdActiveLines() check {
+	paths := []string{"/etc/ssh/sshd_config"}
+	entries, err := os.ReadDir("/etc/ssh/sshd_config.d")
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				paths = append(paths, filepath.Join("/etc/ssh/sshd_config.d", entry.Name()))
+			}
+		}
+	}
+
+	keys := map[string]bool{
+		"allowgroups":                     true,
+		"allowtcpforwarding":              true,
+		"allowusers":                      true,
+		"authenticationmethods":           true,
+		"authorizedkeyscommand":           true,
+		"authorizedkeyscommanduser":       true,
+		"authorizedkeysfile":              true,
+		"challengeresponseauthentication": true,
+		"chrootdirectory":                 true,
+		"denygroups":                      true,
+		"denyusers":                       true,
+		"forcecommand":                    true,
+		"gatewayports":                    true,
+		"hostkeyalgorithms":               true,
+		"include":                         true,
+		"kbdinteractiveauthentication":    true,
+		"listenaddress":                   true,
+		"match":                           true,
+		"passwordauthentication":          true,
+		"permitrootlogin":                 true,
+		"permittunnel":                    true,
+		"pubkeyacceptedalgorithms":        true,
+		"pubkeyauthentication":            true,
+		"subsystem":                       true,
+		"usepam":                          true,
+		"x11forwarding":                   true,
+	}
+
+	matches := make([]string, 0)
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			fields := strings.Fields(trimmed)
+			if len(fields) == 0 {
+				continue
+			}
+			if keys[strings.ToLower(fields[0])] {
+				matches = append(matches, filepath.Base(path)+": "+redactConfigLine(trimmed))
+			}
+		}
+	}
+	if len(matches) == 0 {
+		return check{State: "ok", Detail: "none"}
+	}
+	return check{State: "ok", Detail: strings.Join(matches, "; ")}
+}
+
+func redactConfigLine(line string) string {
+	lower := strings.ToLower(line)
+	if strings.HasPrefix(lower, "authorizedkeyscommand ") ||
+		strings.HasPrefix(lower, "forcecommand ") ||
+		strings.HasPrefix(lower, "match ") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			return line
+		}
+		return fields[0] + " [redacted]"
+	}
+	return line
+}
+
+func tmuxAutoAttach(path string) check {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return check{State: "missing", Detail: "~/.zshrc not found"}
+		}
+		return check{State: "unknown", Detail: err.Error()}
+	}
+	text := string(data)
+	if strings.Contains(text, "stead managed block: tmux auto-attach") {
+		return check{State: "ok", Detail: "stead managed block present"}
+	}
+	if strings.Contains(text, "SSH_CONNECTION") && strings.Contains(text, "tmux new-session") {
+		return check{State: "ok", Detail: "custom SSH tmux auto-attach present"}
+	}
+	return check{State: "missing"}
+}
+
+func shortCommandError(err error, out []byte) string {
+	msg := strings.TrimSpace(string(out))
+	if msg == "" {
+		return err.Error()
+	}
+	if len(msg) > 160 {
+		msg = msg[:160] + "..."
+	}
+	return msg
 }
 
 func authorizedKeys(path string) check {
