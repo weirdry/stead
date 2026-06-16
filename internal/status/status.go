@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/sshconfig"
 )
 
 // Run prints a read-only snapshot of the local machine's Stead-relevant state.
@@ -39,31 +40,33 @@ func RunClient(out io.Writer) error {
 }
 
 type snapshot struct {
-	OS              string
-	Arch            string
-	User            string
-	Home            string
-	SSHPath         check
-	SSHDPath        check
-	TailscalePath   check
-	TailscaleApp    check
-	TailscaleIP     check
-	HostSSHConfig   check
-	SSHDConfigD     check
-	LaunchdSSHD     check
-	RemoteLogin     check
-	SSHDActiveLines check
-	UserSSHDir      check
-	UserSSHConfig   check
-	AuthorizedKeys  check
-	Tmux            check
-	TmuxAutoAttach  check
-	Hardening       []finding
-	Config          check
-	ConfigAlias     string
-	ConfigHosts     []config.HostStatus
-	ConfigPath      string
-	DefaultHostLike bool
+	OS               string
+	Arch             string
+	User             string
+	Home             string
+	SSHPath          check
+	SSHDPath         check
+	TailscalePath    check
+	TailscaleApp     check
+	TailscaleIP      check
+	HostSSHConfig    check
+	SSHDConfigD      check
+	LaunchdSSHD      check
+	RemoteLogin      check
+	SSHDActiveLines  check
+	UserSSHDir       check
+	UserSSHConfig    check
+	AuthorizedKeys   check
+	Tmux             check
+	TmuxAutoAttach   check
+	Hardening        []finding
+	Config           check
+	ConfigAlias      string
+	ConfigHosts      []config.HostStatus
+	ClientAliases    []sshconfig.AliasStatus
+	ClientConfigNote string
+	ConfigPath       string
+	DefaultHostLike  bool
 }
 
 type check struct {
@@ -112,6 +115,7 @@ func collect() snapshot {
 	s.DefaultHostLike = s.SSHDPath.State == "ok" && s.HostSSHConfig.State == "ok"
 	s.Hardening = hostHardening(s)
 	s.Config, s.ConfigAlias, s.ConfigHosts = steadConfig()
+	s.ClientAliases, s.ClientConfigNote = clientAliases(s.UserSSHConfig, filepath.Join(home, ".ssh", "config"), s.ConfigHosts)
 
 	return s
 }
@@ -196,6 +200,30 @@ func printClientSections(out io.Writer, s snapshot) {
 
 	fmt.Fprintf(out, "Client SSH config\n")
 	printCheck(out, "~/.ssh/config", s.UserSSHConfig)
+	if s.ClientConfigNote != "" {
+		fmt.Fprintf(out, "  Note: %s\n", s.ClientConfigNote)
+	}
+	for _, alias := range s.ClientAliases {
+		detail := alias.State
+		if len(alias.Findings) > 0 {
+			detail += " (" + strings.Join(alias.Findings, ", ") + ")"
+		}
+		fmt.Fprintf(out, "  Alias %s: %s\n", alias.Alias, detail)
+		if alias.State != "missing" {
+			if alias.Host.HostName != "" {
+				fmt.Fprintf(out, "    HostName: %s\n", alias.Host.HostName)
+			}
+			if alias.Host.User != "" {
+				fmt.Fprintf(out, "    User: %s\n", alias.Host.User)
+			}
+			if alias.Host.Port != "" {
+				fmt.Fprintf(out, "    Port: %s\n", alias.Host.Port)
+			}
+			if alias.Host.IdentityFile != "" {
+				fmt.Fprintf(out, "    IdentityFile: %s\n", alias.Host.IdentityFile)
+			}
+		}
+	}
 	fmt.Fprintln(out)
 }
 
@@ -628,6 +656,28 @@ func steadConfig() (check, string, []config.HostStatus) {
 		return check{State: "unknown", Detail: err.Error()}, "", nil
 	}
 	return check{State: "ok", Detail: path}, cfg.Defaults.Alias, config.HostStatuses(cfg)
+}
+
+func clientAliases(userConfig check, path string, hosts []config.HostStatus) ([]sshconfig.AliasStatus, string) {
+	if userConfig.State != "ok" || len(hosts) == 0 {
+		return nil, ""
+	}
+
+	cfg, err := sshconfig.Load(path)
+	if err != nil {
+		return nil, "unable to parse ~/.ssh/config: " + err.Error()
+	}
+
+	statuses := make([]sshconfig.AliasStatus, 0, len(hosts))
+	for _, host := range hosts {
+		statuses = append(statuses, sshconfig.CheckAlias(cfg, host.Alias))
+	}
+
+	note := ""
+	if cfg.HasInclude {
+		note = "Include directive present; included files are not expanded yet"
+	}
+	return statuses, note
 }
 
 func authorizedKeys(path string) check {
