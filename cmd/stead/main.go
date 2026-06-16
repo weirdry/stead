@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/status"
@@ -56,6 +57,9 @@ func runClient(args []string) error {
 	if len(args) >= 1 && args[0] == "plan" {
 		return runClientPlan(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "apply" {
+		return runClientApply(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown client command %q", joinArgs(args))
 }
@@ -81,6 +85,39 @@ func runClientPlan(args []string) error {
 		return err
 	}
 	return plan.WriteClient(os.Stdout, cfg, path, alias)
+}
+
+func runClientApply(args []string) error {
+	alias := ""
+	dryRun := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			alias = args[i+1]
+			i++
+		case "--dry-run":
+			dryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client apply option %q", args[i])
+		}
+	}
+	if !dryRun {
+		return fmt.Errorf("client apply currently requires --dry-run")
+	}
+
+	cfg, path, err := config.LoadDefault()
+	if err != nil {
+		return err
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	return clientconfig.WriteDryRun(os.Stdout, cfg, path, clientconfig.DefaultSSHConfigPath(home), alias)
 }
 
 func runConfig(args []string) error {
@@ -142,6 +179,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
+	fmt.Fprintln(out, "  stead client apply --dry-run [--alias name]")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
 	fmt.Fprintln(out, "  stead config init")
