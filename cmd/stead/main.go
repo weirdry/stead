@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/status"
 )
 
@@ -27,6 +29,8 @@ func run(args []string) error {
 		return runHost(args[1:])
 	case "client":
 		return runClient(args[1:])
+	case "config":
+		return runConfig(args[1:])
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 		return nil
@@ -52,6 +56,33 @@ func runClient(args []string) error {
 	return fmt.Errorf("unknown client command %q", joinArgs(args))
 }
 
+func runConfig(args []string) error {
+	if len(args) != 1 {
+		printUsage(os.Stderr)
+		return fmt.Errorf("unknown config command %q", joinArgs(args))
+	}
+
+	switch args[0] {
+	case "path":
+		fmt.Fprintln(os.Stdout, config.DefaultPath())
+		return nil
+	case "show":
+		cfg, path, err := config.LoadDefault()
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Fprintf(os.Stdout, "Stead config\n\nPath: %s\nStatus: missing\n", path)
+				return nil
+			}
+			return err
+		}
+		config.WriteSummary(os.Stdout, cfg, path)
+		return nil
+	default:
+		printUsage(os.Stderr)
+		return fmt.Errorf("unknown config command %q", joinArgs(args))
+	}
+}
+
 func printUsage(out *os.File) {
 	fmt.Fprintln(out, "stead manages personal OpenSSH remote-dev setup")
 	fmt.Fprintln(out)
@@ -59,6 +90,8 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
+	fmt.Fprintln(out, "  stead config path")
+	fmt.Fprintln(out, "  stead config show")
 	fmt.Fprintln(out, "  stead help")
 }
 

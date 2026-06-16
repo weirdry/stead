@@ -78,6 +78,8 @@ If Tailscale SSH is detected, `stead` should report it as external and unmanaged
 
 ```bash
 stead status
+stead config path
+stead config show
 stead doctor
 
 stead host status

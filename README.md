@@ -31,6 +31,8 @@ client machine
 
 ```bash
 stead status
+stead config path
+stead config show
 stead doctor
 
 stead host status
