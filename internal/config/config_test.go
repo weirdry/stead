@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -59,5 +60,21 @@ func TestParseRejectsUnknownSection(t *testing.T) {
 	_, err := Parse(strings.NewReader("[unknown]\nvalue = \"x\"\n"))
 	if err == nil {
 		t.Fatal("expected unknown section error")
+	}
+}
+
+func TestStarterConfigIsParseable(t *testing.T) {
+	var buf bytes.Buffer
+	WriteStarter(&buf)
+
+	cfg, err := Parse(&buf)
+	if err != nil {
+		t.Fatalf("starter config should parse: %v", err)
+	}
+	if cfg.Defaults.Alias != "devmac" {
+		t.Fatalf("default alias = %q", cfg.Defaults.Alias)
+	}
+	if cfg.Hosts["devmac"] == nil {
+		t.Fatal("starter devmac host missing")
 	}
 }

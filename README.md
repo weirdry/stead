@@ -33,6 +33,7 @@ client machine
 stead status
 stead config path
 stead config show
+stead config init --dry-run
 stead doctor
 
 stead host status

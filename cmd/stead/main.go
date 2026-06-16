@@ -57,7 +57,7 @@ func runClient(args []string) error {
 }
 
 func runConfig(args []string) error {
-	if len(args) != 1 {
+	if len(args) == 0 {
 		printUsage(os.Stderr)
 		return fmt.Errorf("unknown config command %q", joinArgs(args))
 	}
@@ -77,10 +77,23 @@ func runConfig(args []string) error {
 		}
 		config.WriteSummary(os.Stdout, cfg, path)
 		return nil
+	case "init":
+		return runConfigInit(args[1:])
 	default:
 		printUsage(os.Stderr)
 		return fmt.Errorf("unknown config command %q", joinArgs(args))
 	}
+}
+
+func runConfigInit(args []string) error {
+	if len(args) == 1 && args[0] == "--dry-run" {
+		path := config.DefaultPath()
+		fmt.Fprintf(os.Stdout, "# dry run: would write %s\n", path)
+		config.WriteStarter(os.Stdout)
+		return nil
+	}
+	printUsage(os.Stderr)
+	return fmt.Errorf("config init currently requires --dry-run")
 }
 
 func printUsage(out *os.File) {
@@ -92,6 +105,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
+	fmt.Fprintln(out, "  stead config init --dry-run")
 	fmt.Fprintln(out, "  stead help")
 }
 

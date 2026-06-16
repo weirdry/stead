@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -59,6 +60,31 @@ func LoadDefault() (*Config, string, error) {
 	path := DefaultPath()
 	cfg, err := Load(path)
 	return cfg, path, err
+}
+
+// WriteStarter writes a starter config template.
+func WriteStarter(out io.Writer) {
+	userName := currentUserName()
+	fmt.Fprintln(out, `[defaults]
+alias = "devmac"
+
+[hosts.devmac]
+hostname = "<tailscale-ip-or-magicdns>"
+user = "`+userName+`"
+port = 22
+identity_file = "~/.ssh/stead_ed25519"
+preferred_network = "tailscale"
+
+[hosts.devmac.wake]
+mac_address = "<host-mac-address>"
+broadcast = "<lan-broadcast-address>"
+timeout = "90s"
+interval = "2s"
+
+[hosts.devmac.session]
+tmux = true
+tmux_session = "main"
+project_dir = "`+starterProjectDir()+`"`)
 }
 
 // Load reads a Stead config file.
@@ -370,4 +396,23 @@ func sessionSummary(session Session) string {
 		parts = append(parts, "project "+session.ProjectDir)
 	}
 	return strings.Join(parts, ", ")
+}
+
+func currentUserName() string {
+	u, err := user.Current()
+	if err != nil || u == nil || u.Username == "" {
+		return "<local-user>"
+	}
+	return filepath.Base(u.Username)
+}
+
+func starterProjectDir() string {
+	u, err := user.Current()
+	if err != nil || u == nil || u.HomeDir == "" {
+		if runtime.GOOS == "windows" {
+			return "<project-dir>"
+		}
+		return "~/project"
+	}
+	return filepath.Join(u.HomeDir, "_GIT")
 }
