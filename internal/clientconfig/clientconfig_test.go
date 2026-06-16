@@ -134,11 +134,185 @@ func TestWriteDryRunReportsIncludeDirective(t *testing.T) {
 	}
 }
 
+func TestWriteApplyCreatesSSHConfig(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, ".ssh", "config")
+	cfg := testConfig()
+
+	var buf bytes.Buffer
+	if err := WriteApply(&buf, cfg, "/tmp/stead-config.toml", sshConfig, "devmac"); err != nil {
+		t.Fatalf("WriteApply returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(sshConfig)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if string(data) != ManagedBlock("devmac", testHost()) {
+		t.Fatalf("unexpected config content:\n%s", string(data))
+	}
+	assertMode(t, filepath.Dir(sshConfig), 0o700)
+	assertMode(t, sshConfig, 0o600)
+	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
+		t.Fatalf("unexpected backups for new config: %#v", backups)
+	}
+	if !strings.Contains(buf.String(), "Action: added managed SSH config block") {
+		t.Fatalf("output missing add action:\n%s", buf.String())
+	}
+}
+
+func TestWriteApplyAppendsAndBacksUpExistingSSHConfig(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	original := "Host other\n    HostName other.example\n"
+	if err := os.WriteFile(sshConfig, []byte(original), 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteApply(&buf, testConfig(), "/tmp/stead-config.toml", sshConfig, "devmac"); err != nil {
+		t.Fatalf("WriteApply returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(sshConfig)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.HasPrefix(string(data), original+"\n") {
+		t.Fatalf("existing content not preserved:\n%s", string(data))
+	}
+	if !strings.Contains(string(data), ManagedBlock("devmac", testHost())) {
+		t.Fatalf("managed block missing:\n%s", string(data))
+	}
+	assertMode(t, sshConfig, 0o644)
+
+	backups := backupFiles(t, sshConfig)
+	if len(backups) != 1 {
+		t.Fatalf("backup count = %d, want 1: %#v", len(backups), backups)
+	}
+	backup, err := os.ReadFile(backups[0])
+	if err != nil {
+		t.Fatalf("ReadFile backup returned error: %v", err)
+	}
+	if string(backup) != original {
+		t.Fatalf("backup content = %q", string(backup))
+	}
+	if !strings.Contains(buf.String(), "Backup: "+backups[0]) {
+		t.Fatalf("output missing backup path:\n%s", buf.String())
+	}
+}
+
+func TestWriteApplyReplacesManagedBlock(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	old := strings.Replace(ManagedBlock("devmac", testHost()), "User ed", "User old", 1)
+	original := "Host other\n    HostName other.example\n\n" + old + "Host after\n    HostName after.example\n"
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteApply(&buf, testConfig(), "/tmp/stead-config.toml", sshConfig, "devmac"); err != nil {
+		t.Fatalf("WriteApply returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(sshConfig)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	got := string(data)
+	if strings.Contains(got, "User old") {
+		t.Fatalf("old managed block was not replaced:\n%s", got)
+	}
+	if !strings.Contains(got, ManagedBlock("devmac", testHost())) {
+		t.Fatalf("new managed block missing:\n%s", got)
+	}
+	if !strings.Contains(got, "Host other") || !strings.Contains(got, "Host after") {
+		t.Fatalf("unrelated content not preserved:\n%s", got)
+	}
+	if !strings.Contains(buf.String(), "Action: replaced existing managed SSH config block") {
+		t.Fatalf("output missing replace action:\n%s", buf.String())
+	}
+}
+
+func TestWriteApplyUnchangedDoesNotWriteBackup(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	block := ManagedBlock("devmac", testHost())
+	if err := os.WriteFile(sshConfig, []byte(block), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteApply(&buf, testConfig(), "/tmp/stead-config.toml", sshConfig, "devmac"); err != nil {
+		t.Fatalf("WriteApply returned error: %v", err)
+	}
+	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
+		t.Fatalf("unexpected backups: %#v", backups)
+	}
+	if !strings.Contains(buf.String(), "Action: no changes needed") {
+		t.Fatalf("output missing unchanged action:\n%s", buf.String())
+	}
+}
+
+func TestWriteApplyMalformedBlockDoesNotModifySSHConfig(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	original := "# BEGIN stead devmac\nHost devmac\n"
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	err := WriteApply(&bytes.Buffer{}, testConfig(), "/tmp/stead-config.toml", sshConfig, "devmac")
+	if err == nil {
+		t.Fatal("expected malformed block error")
+	}
+	data, readErr := os.ReadFile(sshConfig)
+	if readErr != nil {
+		t.Fatalf("ReadFile returned error: %v", readErr)
+	}
+	if string(data) != original {
+		t.Fatalf("malformed apply modified config:\n%s", string(data))
+	}
+	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
+		t.Fatalf("unexpected backups: %#v", backups)
+	}
+}
+
+func testConfig() *config.Config {
+	return &config.Config{
+		Defaults: config.Defaults{Alias: "devmac"},
+		Hosts: map[string]*config.Host{
+			"devmac": testHost(),
+		},
+	}
+}
+
 func testHost() *config.Host {
 	return &config.Host{
 		Hostname:     "devmac.tailnet.example",
 		User:         "ed",
 		Port:         22,
 		IdentityFile: "~/.ssh/stead_ed25519",
+	}
+}
+
+func backupFiles(t *testing.T, sshConfig string) []string {
+	t.Helper()
+	matches, err := filepath.Glob(sshConfig + ".stead-backup-*")
+	if err != nil {
+		t.Fatalf("Glob returned error: %v", err)
+	}
+	return matches
+}
+
+func assertMode(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat %s returned error: %v", path, err)
+	}
+	if got := info.Mode().Perm(); got != want {
+		t.Fatalf("%s mode = %o, want %o", path, got, want)
 	}
 }

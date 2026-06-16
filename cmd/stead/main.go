@@ -105,10 +105,6 @@ func runClientApply(args []string) error {
 			return fmt.Errorf("unknown client apply option %q", args[i])
 		}
 	}
-	if !dryRun {
-		return fmt.Errorf("client apply currently requires --dry-run")
-	}
-
 	cfg, path, err := config.LoadDefault()
 	if err != nil {
 		return err
@@ -117,7 +113,11 @@ func runClientApply(args []string) error {
 	if err != nil {
 		return err
 	}
-	return clientconfig.WriteDryRun(os.Stdout, cfg, path, clientconfig.DefaultSSHConfigPath(home), alias)
+	sshConfigPath := clientconfig.DefaultSSHConfigPath(home)
+	if dryRun {
+		return clientconfig.WriteDryRun(os.Stdout, cfg, path, sshConfigPath, alias)
+	}
+	return clientconfig.WriteApply(os.Stdout, cfg, path, sshConfigPath, alias)
 }
 
 func runConfig(args []string) error {
@@ -179,7 +179,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
-	fmt.Fprintln(out, "  stead client apply --dry-run [--alias name]")
+	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
 	fmt.Fprintln(out, "  stead config init")
