@@ -367,7 +367,7 @@ func sshdActiveLines() check {
 				continue
 			}
 			if trackedSSHDKeys()[strings.ToLower(fields[0])] {
-				matches = append(matches, filepath.Base(path)+": "+redactConfigLine(trimmed))
+				matches = append(matches, filepath.Base(path)+": "+formatConfigLine(fields))
 			}
 		}
 	}
@@ -375,6 +375,10 @@ func sshdActiveLines() check {
 		return check{State: "ok", Detail: "none"}
 	}
 	return check{State: "ok", Detail: strings.Join(matches, "; ")}
+}
+
+func formatConfigLine(fields []string) string {
+	return redactConfigLine(strings.Join(fields, " "))
 }
 
 func hostHardening(s snapshot) []finding {
