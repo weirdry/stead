@@ -22,8 +22,8 @@ identity_file = "~/.ssh/stead_ed25519"
 preferred_network = "tailscale"
 
 [hosts.devmac.wake]
-mac_address = "aa:bb:cc:dd:ee:ff"
-broadcast = "192.0.2.255"
+mac_address = "configured-mac-address"
+broadcast = "configured-broadcast-address"
 timeout = "90s"
 interval = "2s"
 
@@ -51,7 +51,7 @@ project_dir = "/Users/ed/_GIT/example"
 	if host.Port != 22 {
 		t.Fatalf("port = %d", host.Port)
 	}
-	if host.Wake.MACAddress != "aa:bb:cc:dd:ee:ff" {
+	if host.Wake.MACAddress != "configured-mac-address" {
 		t.Fatalf("wake MAC = %q", host.Wake.MACAddress)
 	}
 	if !host.Session.Tmux {

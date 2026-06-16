@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/status"
 )
 
@@ -52,8 +53,34 @@ func runClient(args []string) error {
 	if len(args) == 1 && args[0] == "status" {
 		return status.RunClient(os.Stdout)
 	}
+	if len(args) >= 1 && args[0] == "plan" {
+		return runClientPlan(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown client command %q", joinArgs(args))
+}
+
+func runClientPlan(args []string) error {
+	alias := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			alias = args[i+1]
+			i++
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client plan option %q", args[i])
+		}
+	}
+
+	cfg, path, err := config.LoadDefault()
+	if err != nil {
+		return err
+	}
+	return plan.WriteClient(os.Stdout, cfg, path, alias)
 }
 
 func runConfig(args []string) error {
@@ -114,6 +141,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
+	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
 	fmt.Fprintln(out, "  stead config init")
