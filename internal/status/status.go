@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -12,6 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/ed/stead/internal/config"
 )
 
 // Run prints a read-only snapshot of the local machine's Stead-relevant state.
@@ -56,6 +59,9 @@ type snapshot struct {
 	Tmux            check
 	TmuxAutoAttach  check
 	Hardening       []finding
+	Config          check
+	ConfigAlias     string
+	ConfigHosts     []config.HostStatus
 	ConfigPath      string
 	DefaultHostLike bool
 }
@@ -85,7 +91,7 @@ func collect() snapshot {
 		Arch:       runtime.GOARCH,
 		User:       username,
 		Home:       home,
-		ConfigPath: configPath(home),
+		ConfigPath: config.DefaultPath(),
 	}
 
 	s.SSHPath = lookPath("ssh")
@@ -105,6 +111,7 @@ func collect() snapshot {
 	s.TmuxAutoAttach = tmuxAutoAttach(filepath.Join(home, ".zshrc"))
 	s.DefaultHostLike = s.SSHDPath.State == "ok" && s.HostSSHConfig.State == "ok"
 	s.Hardening = hostHardening(s)
+	s.Config, s.ConfigAlias, s.ConfigHosts = steadConfig()
 
 	return s
 }
@@ -195,6 +202,22 @@ func printClientSections(out io.Writer, s snapshot) {
 func printStead(out io.Writer, s snapshot) {
 	fmt.Fprintf(out, "Stead\n")
 	fmt.Fprintf(out, "  Config path: %s\n", s.ConfigPath)
+	printCheck(out, "Config", s.Config)
+	if s.Config.State == "ok" {
+		fmt.Fprintf(out, "  Default alias: %s\n", value(s.ConfigAlias))
+		if len(s.ConfigHosts) == 0 {
+			fmt.Fprintf(out, "  Configured hosts: none\n")
+		} else {
+			fmt.Fprintf(out, "  Configured hosts:\n")
+			for _, host := range s.ConfigHosts {
+				detail := host.State
+				if len(host.Findings) > 0 {
+					detail += " (" + strings.Join(host.Findings, ", ") + ")"
+				}
+				fmt.Fprintf(out, "    %s: %s\n", host.Alias, detail)
+			}
+		}
+	}
 	fmt.Fprintf(out, "  Mode: read-only status\n")
 }
 
@@ -590,6 +613,17 @@ func shortCommandError(err error, out []byte) string {
 		msg = msg[:160] + "..."
 	}
 	return msg
+}
+
+func steadConfig() (check, string, []config.HostStatus) {
+	cfg, path, err := config.LoadDefault()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return check{State: "missing", Detail: path}, "", nil
+		}
+		return check{State: "unknown", Detail: err.Error()}, "", nil
+	}
+	return check{State: "ok", Detail: path}, cfg.Defaults.Alias, config.HostStatuses(cfg)
 }
 
 func authorizedKeys(path string) check {

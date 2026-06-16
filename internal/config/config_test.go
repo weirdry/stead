@@ -131,3 +131,60 @@ func TestWriteSummaryMarksPlaceholders(t *testing.T) {
 		t.Fatalf("summary did not mark wake placeholders:\n%s", out)
 	}
 }
+
+func TestHostStatusesClassifiesPlaceholders(t *testing.T) {
+	cfg := &Config{
+		Hosts: map[string]*Host{
+			"devmac": {
+				Hostname: "<tailscale-ip-or-magicdns>",
+				User:     "ed",
+				Wake: Wake{
+					MACAddress: "<host-mac-address>",
+					Broadcast:  "<lan-broadcast-address>",
+				},
+			},
+		},
+	}
+
+	statuses := HostStatuses(cfg)
+	if len(statuses) != 1 {
+		t.Fatalf("status count = %d", len(statuses))
+	}
+	if statuses[0].State != "incomplete" {
+		t.Fatalf("state = %q", statuses[0].State)
+	}
+	want := []string{"hostname placeholder", "wake MAC placeholder", "wake broadcast placeholder"}
+	for _, finding := range want {
+		if !contains(statuses[0].Findings, finding) {
+			t.Fatalf("missing finding %q in %#v", finding, statuses[0].Findings)
+		}
+	}
+}
+
+func TestHostStatusesClassifiesCompleteHost(t *testing.T) {
+	cfg := &Config{
+		Hosts: map[string]*Host{
+			"devmac": {
+				Hostname: "devmac.example",
+				User:     "ed",
+			},
+		},
+	}
+
+	statuses := HostStatuses(cfg)
+	if len(statuses) != 1 {
+		t.Fatalf("status count = %d", len(statuses))
+	}
+	if statuses[0].State != "ok" {
+		t.Fatalf("state = %q; findings = %#v", statuses[0].State, statuses[0].Findings)
+	}
+}
+
+func contains(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}

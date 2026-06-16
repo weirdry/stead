@@ -48,6 +48,12 @@ type Session struct {
 	ProjectDir  string
 }
 
+type HostStatus struct {
+	Alias    string
+	State    string
+	Findings []string
+}
+
 // DefaultPath returns ~/.config/stead/config.toml for the current user.
 func DefaultPath() string {
 	u, err := user.Current()
@@ -194,6 +200,44 @@ func WriteSummary(out io.Writer, cfg *Config, path string) {
 		fmt.Fprintf(out, "    Wake: %s\n", wakeSummary(host.Wake))
 		fmt.Fprintf(out, "    Session: %s\n", sessionSummary(host.Session))
 	}
+}
+
+// HostStatuses returns stable, display-oriented config health for each host.
+func HostStatuses(cfg *Config) []HostStatus {
+	statuses := make([]HostStatus, 0, len(cfg.Hosts))
+	for _, alias := range sortedAliases(cfg.Hosts) {
+		host := cfg.Hosts[alias]
+		findings := hostFindings(host)
+		state := "ok"
+		if len(findings) > 0 {
+			state = "incomplete"
+		}
+		statuses = append(statuses, HostStatus{
+			Alias:    alias,
+			State:    state,
+			Findings: findings,
+		})
+	}
+	return statuses
+}
+
+func hostFindings(host *Host) []string {
+	findings := make([]string, 0)
+	if host.Hostname == "" {
+		findings = append(findings, "hostname missing")
+	} else if isPlaceholder(host.Hostname) {
+		findings = append(findings, "hostname placeholder")
+	}
+	if host.User == "" {
+		findings = append(findings, "user missing")
+	}
+	if isPlaceholder(host.Wake.MACAddress) {
+		findings = append(findings, "wake MAC placeholder")
+	}
+	if isPlaceholder(host.Wake.Broadcast) {
+		findings = append(findings, "wake broadcast placeholder")
+	}
+	return findings
 }
 
 func assign(cfg *Config, section, key, raw string, lineNo int) error {
