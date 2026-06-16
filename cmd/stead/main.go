@@ -92,8 +92,19 @@ func runConfigInit(args []string) error {
 		config.WriteStarter(os.Stdout)
 		return nil
 	}
+	if len(args) == 0 {
+		path, err := config.InitDefault()
+		if err != nil {
+			if errors.Is(err, os.ErrExist) {
+				return fmt.Errorf("config already exists at %s", path)
+			}
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "wrote %s\n", path)
+		return nil
+	}
 	printUsage(os.Stderr)
-	return fmt.Errorf("config init currently requires --dry-run")
+	return fmt.Errorf("unknown config init option %q", joinArgs(args))
 }
 
 func printUsage(out *os.File) {
@@ -105,6 +116,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
+	fmt.Fprintln(out, "  stead config init")
 	fmt.Fprintln(out, "  stead config init --dry-run")
 	fmt.Fprintln(out, "  stead help")
 }

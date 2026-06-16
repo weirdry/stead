@@ -2,6 +2,8 @@ package config
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +62,34 @@ func LoadDefault() (*Config, string, error) {
 	path := DefaultPath()
 	cfg, err := Load(path)
 	return cfg, path, err
+}
+
+// InitDefault writes a starter config at the default path if it does not exist.
+func InitDefault() (string, error) {
+	path := DefaultPath()
+	return path, Init(path)
+}
+
+// Init writes a starter config if path does not already exist.
+func Init(path string) error {
+	var buf bytes.Buffer
+	WriteStarter(&buf)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return err
+		}
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(buf.Bytes())
+	return err
 }
 
 // WriteStarter writes a starter config template.

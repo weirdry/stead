@@ -80,6 +80,7 @@ If Tailscale SSH is detected, `stead` should report it as external and unmanaged
 stead status
 stead config path
 stead config show
+stead config init
 stead config init --dry-run
 stead doctor
 

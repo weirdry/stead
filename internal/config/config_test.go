@@ -2,6 +2,9 @@ package config
 
 import (
 	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -76,5 +79,26 @@ func TestStarterConfigIsParseable(t *testing.T) {
 	}
 	if cfg.Hosts["devmac"] == nil {
 		t.Fatal("starter devmac host missing")
+	}
+}
+
+func TestInitWritesConfigAndRefusesOverwrite(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stead", "config.toml")
+
+	if err := Init(path); err != nil {
+		t.Fatalf("Init returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if _, err := Parse(bytes.NewReader(data)); err != nil {
+		t.Fatalf("written config should parse: %v", err)
+	}
+
+	err = Init(path)
+	if !errors.Is(err, os.ErrExist) {
+		t.Fatalf("second Init error = %v, want os.ErrExist", err)
 	}
 }
