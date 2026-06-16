@@ -186,7 +186,7 @@ func WriteSummary(out io.Writer, cfg *Config, path string) {
 	for _, alias := range sortedAliases(cfg.Hosts) {
 		host := cfg.Hosts[alias]
 		fmt.Fprintf(out, "  %s\n", alias)
-		fmt.Fprintf(out, "    Hostname: %s\n", valueOrUnset(host.Hostname))
+		fmt.Fprintf(out, "    Hostname: %s\n", valueOrUnsetOrPlaceholder(host.Hostname))
 		fmt.Fprintf(out, "    User: %s\n", valueOrUnset(host.User))
 		fmt.Fprintf(out, "    Port: %d\n", defaultPort(host.Port))
 		fmt.Fprintf(out, "    IdentityFile: %s\n", valueOrUnset(host.IdentityFile))
@@ -385,6 +385,21 @@ func valueOrUnset(value string) string {
 	return value
 }
 
+func valueOrUnsetOrPlaceholder(value string) string {
+	if value == "" {
+		return "(unset)"
+	}
+	if isPlaceholder(value) {
+		return "(placeholder: " + value + ")"
+	}
+	return value
+}
+
+func isPlaceholder(value string) bool {
+	value = strings.TrimSpace(value)
+	return strings.HasPrefix(value, "<") && strings.HasSuffix(value, ">")
+}
+
 func defaultPort(port int) int {
 	if port == 0 {
 		return 22
@@ -393,15 +408,21 @@ func defaultPort(port int) int {
 }
 
 func wakeSummary(wake Wake) string {
-	if wake.MACAddress == "" && wake.Broadcast == "" && wake.Timeout == "" && wake.Interval == "" {
+	hasMAC := wake.MACAddress != "" && !isPlaceholder(wake.MACAddress)
+	hasBroadcast := wake.Broadcast != "" && !isPlaceholder(wake.Broadcast)
+	if !hasMAC && !hasBroadcast && wake.Timeout == "" && wake.Interval == "" {
 		return "not configured"
 	}
 	parts := make([]string, 0, 4)
-	if wake.MACAddress != "" {
+	if hasMAC {
 		parts = append(parts, "mac configured")
+	} else if isPlaceholder(wake.MACAddress) {
+		parts = append(parts, "mac placeholder")
 	}
-	if wake.Broadcast != "" {
+	if hasBroadcast {
 		parts = append(parts, "broadcast "+wake.Broadcast)
+	} else if isPlaceholder(wake.Broadcast) {
+		parts = append(parts, "broadcast placeholder")
 	}
 	if wake.Timeout != "" {
 		parts = append(parts, "timeout "+wake.Timeout)

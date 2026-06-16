@@ -102,3 +102,32 @@ func TestInitWritesConfigAndRefusesOverwrite(t *testing.T) {
 		t.Fatalf("second Init error = %v, want os.ErrExist", err)
 	}
 }
+
+func TestWriteSummaryMarksPlaceholders(t *testing.T) {
+	cfg := &Config{
+		Defaults: Defaults{Alias: "devmac"},
+		Hosts: map[string]*Host{
+			"devmac": {
+				Hostname: "<tailscale-ip-or-magicdns>",
+				User:     "ed",
+				Wake: Wake{
+					MACAddress: "<host-mac-address>",
+					Broadcast:  "<lan-broadcast-address>",
+					Timeout:    "90s",
+					Interval:   "2s",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	WriteSummary(&buf, cfg, "/tmp/config.toml")
+	out := buf.String()
+
+	if !strings.Contains(out, "Hostname: (placeholder: <tailscale-ip-or-magicdns>)") {
+		t.Fatalf("summary did not mark hostname placeholder:\n%s", out)
+	}
+	if !strings.Contains(out, "Wake: mac placeholder, broadcast placeholder, timeout 90s, interval 2s") {
+		t.Fatalf("summary did not mark wake placeholders:\n%s", out)
+	}
+}
