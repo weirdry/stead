@@ -43,13 +43,31 @@ stead host harden
 stead host uninstall
 
 stead client status
-stead client install
+stead client init
+stead client init --alias devmac
+stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
+stead client plan --alias devmac
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
 stead client uninstall
 
 stead wake --alias devmac
 stead connect --alias devmac
 stead connect --alias devmac --wake
 ```
+
+## Client Setup
+
+`stead client init` prepares one client machine for one host. It can prompt for the host name, creates or updates `~/.config/stead/config.toml`, and generates a local Ed25519 SSH key if the configured key does not exist.
+
+```bash
+stead client init --alias devmac
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
+ssh devmac
+```
+
+The hostname may be a Tailscale MagicDNS name or Tailscale IP. This is still normal OpenSSH-over-Tailscale; Tailscale SSH is not used.
 
 ## Install Model
 

@@ -103,6 +103,50 @@ func TestInitWritesConfigAndRefusesOverwrite(t *testing.T) {
 	}
 }
 
+func TestWriteRoundTrip(t *testing.T) {
+	cfg := &Config{
+		Defaults: Defaults{Alias: "devmac"},
+		Hosts: map[string]*Host{
+			"devmac": {
+				Hostname:         "devmac.tailnet.example",
+				User:             "ed",
+				Port:             22,
+				IdentityFile:     "~/.ssh/stead_devmac_ed25519",
+				PreferredNetwork: "tailscale",
+				Wake: Wake{
+					MACAddress: "configured-mac-address",
+					Broadcast:  "configured-broadcast-address",
+					Timeout:    "90s",
+					Interval:   "2s",
+				},
+				Session: Session{
+					Tmux:        true,
+					TmuxSession: "main",
+					ProjectDir:  "/Users/ed/_GIT",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	Write(&buf, cfg)
+
+	parsed, err := Parse(&buf)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	host := parsed.Hosts["devmac"]
+	if host == nil {
+		t.Fatal("devmac host missing")
+	}
+	if host.Hostname != "devmac.tailnet.example" {
+		t.Fatalf("hostname = %q", host.Hostname)
+	}
+	if !host.Session.Tmux {
+		t.Fatal("tmux should be enabled")
+	}
+}
+
 func TestWriteSummaryMarksPlaceholders(t *testing.T) {
 	cfg := &Config{
 		Defaults: Defaults{Alias: "devmac"},

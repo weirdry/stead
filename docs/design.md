@@ -90,7 +90,12 @@ stead host harden
 stead host uninstall
 
 stead client status
-stead client install
+stead client init
+stead client init --alias devmac
+stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
+stead client plan --alias devmac
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
 stead client uninstall
 
 stead wake --alias devmac
@@ -103,7 +108,9 @@ Example flags:
 ```bash
 stead host install --user ed --tmux-session main
 stead host harden --user ed --disable-password
-stead client install --alias devmac --user ed --host <tailscale-ip-or-magicdns> --identity ~/.ssh/stead_ed25519
+stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
 stead wake --alias devmac
 stead connect --alias devmac --wake
 ```
@@ -148,10 +155,34 @@ Client mode manages connection convenience on client machines.
 It may:
 
 - Create or update a managed `~/.ssh/config` host entry.
-- Generate or register an SSH identity key.
+- Generate or register a local SSH identity key.
 - Detect Tailscale IP/MagicDNS metadata.
 - Install optional wake/connect convenience behavior.
 - Run the normal system `ssh` command.
+
+Recommended setup flow:
+
+```bash
+stead client init --alias devmac
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
+```
+
+`stead client init` may prompt for the hostname when it is not supplied. For scripts, callers can provide all required fields explicitly:
+
+```bash
+stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
+```
+
+The hostname can be a Tailscale IP or MagicDNS name. This is not Tailscale SSH; it is only the network address used by normal OpenSSH.
+
+Default client identity path:
+
+```text
+~/.ssh/stead_<alias>_ed25519
+```
+
+Generated private keys stay on the client machine. `stead` may print the generated public key so the user can install it on the host's `~/.ssh/authorized_keys`.
 
 Example generated SSH config:
 

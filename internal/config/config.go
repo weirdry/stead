@@ -98,6 +98,54 @@ func Init(path string) error {
 	return err
 }
 
+// SaveDefault writes a complete Stead config to the default config path.
+func SaveDefault(cfg *Config) (string, error) {
+	path := DefaultPath()
+	return path, Save(path, cfg)
+}
+
+// Save writes a complete Stead config.
+func Save(path string, cfg *Config) error {
+	var buf bytes.Buffer
+	Write(&buf, cfg)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, buf.Bytes(), 0o644)
+}
+
+// Write serializes Stead config in the supported TOML subset.
+func Write(out io.Writer, cfg *Config) {
+	fmt.Fprintln(out, "[defaults]")
+	fmt.Fprintf(out, "alias = %q\n", cfg.Defaults.Alias)
+	fmt.Fprintln(out)
+
+	for _, alias := range sortedAliases(cfg.Hosts) {
+		host := cfg.Hosts[alias]
+		fmt.Fprintf(out, "[hosts.%s]\n", alias)
+		fmt.Fprintf(out, "hostname = %q\n", host.Hostname)
+		fmt.Fprintf(out, "user = %q\n", host.User)
+		fmt.Fprintf(out, "port = %d\n", defaultPort(host.Port))
+		fmt.Fprintf(out, "identity_file = %q\n", host.IdentityFile)
+		fmt.Fprintf(out, "preferred_network = %q\n", host.PreferredNetwork)
+		fmt.Fprintln(out)
+
+		fmt.Fprintf(out, "[hosts.%s.wake]\n", alias)
+		fmt.Fprintf(out, "mac_address = %q\n", host.Wake.MACAddress)
+		fmt.Fprintf(out, "broadcast = %q\n", host.Wake.Broadcast)
+		fmt.Fprintf(out, "timeout = %q\n", host.Wake.Timeout)
+		fmt.Fprintf(out, "interval = %q\n", host.Wake.Interval)
+		fmt.Fprintln(out)
+
+		fmt.Fprintf(out, "[hosts.%s.session]\n", alias)
+		fmt.Fprintf(out, "tmux = %t\n", host.Session.Tmux)
+		fmt.Fprintf(out, "tmux_session = %q\n", host.Session.TmuxSession)
+		fmt.Fprintf(out, "project_dir = %q\n", host.Session.ProjectDir)
+		fmt.Fprintln(out)
+	}
+}
+
 // WriteStarter writes a starter config template.
 func WriteStarter(out io.Writer) {
 	userName := currentUserName()

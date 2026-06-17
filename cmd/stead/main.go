@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ed/stead/internal/clientconfig"
+	"github.com/ed/stead/internal/clientinit"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/status"
@@ -59,6 +60,9 @@ func runClient(args []string) error {
 	}
 	if len(args) >= 1 && args[0] == "apply" {
 		return runClientApply(args[1:])
+	}
+	if len(args) >= 1 && args[0] == "init" {
+		return runClientInit(args[1:])
 	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown client command %q", joinArgs(args))
@@ -120,6 +124,49 @@ func runClientApply(args []string) error {
 	return clientconfig.WriteApply(os.Stdout, cfg, path, sshConfigPath, alias)
 }
 
+func runClientInit(args []string) error {
+	opts := clientinit.Options{
+		In:  os.Stdin,
+		Out: os.Stdout,
+	}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--hostname":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--hostname requires a value")
+			}
+			opts.Hostname = args[i+1]
+			i++
+		case "--user":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--user requires a value")
+			}
+			opts.User = args[i+1]
+			i++
+		case "--identity-file":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--identity-file requires a value")
+			}
+			opts.IdentityFile = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		case "--yes":
+			opts.Yes = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client init option %q", args[i])
+		}
+	}
+	return clientinit.Run(opts)
+}
+
 func runConfig(args []string) error {
 	if len(args) == 0 {
 		printUsage(os.Stderr)
@@ -178,6 +225,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
+	fmt.Fprintln(out, "  stead client init [--alias name] [--hostname host] [--user user] [--identity-file path] [--dry-run] [--yes]")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
 	fmt.Fprintln(out, "  stead config path")
