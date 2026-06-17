@@ -176,7 +176,7 @@ func TestWriteSummaryMarksPlaceholders(t *testing.T) {
 	}
 }
 
-func TestHostStatusesClassifiesPlaceholders(t *testing.T) {
+func TestHostStatusesClassifiesRequiredPlaceholders(t *testing.T) {
 	cfg := &Config{
 		Hosts: map[string]*Host{
 			"devmac": {
@@ -197,11 +197,39 @@ func TestHostStatusesClassifiesPlaceholders(t *testing.T) {
 	if statuses[0].State != "incomplete" {
 		t.Fatalf("state = %q", statuses[0].State)
 	}
-	want := []string{"hostname placeholder", "wake MAC placeholder", "wake broadcast placeholder"}
+	want := []string{"hostname placeholder"}
 	for _, finding := range want {
 		if !contains(statuses[0].Findings, finding) {
 			t.Fatalf("missing finding %q in %#v", finding, statuses[0].Findings)
 		}
+	}
+	for _, finding := range []string{"wake MAC placeholder", "wake broadcast placeholder"} {
+		if contains(statuses[0].Findings, finding) {
+			t.Fatalf("optional wake finding %q should not block readiness: %#v", finding, statuses[0].Findings)
+		}
+	}
+}
+
+func TestHostStatusesIgnoresOptionalWakePlaceholders(t *testing.T) {
+	cfg := &Config{
+		Hosts: map[string]*Host{
+			"devmac": {
+				Hostname: "devmac.example",
+				User:     "ed",
+				Wake: Wake{
+					MACAddress: "<host-mac-address>",
+					Broadcast:  "<lan-broadcast-address>",
+				},
+			},
+		},
+	}
+
+	statuses := HostStatuses(cfg)
+	if len(statuses) != 1 {
+		t.Fatalf("status count = %d", len(statuses))
+	}
+	if statuses[0].State != "ok" {
+		t.Fatalf("state = %q; findings = %#v", statuses[0].State, statuses[0].Findings)
 	}
 }
 

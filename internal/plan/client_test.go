@@ -61,6 +61,24 @@ func TestWriteClientMissingAlias(t *testing.T) {
 	}
 }
 
+func TestWriteClientTreatsWakePlaceholdersAsNotes(t *testing.T) {
+	cfg := testConfig()
+	cfg.Hosts["devmac"].Wake.MACAddress = "<host-mac-address>"
+	cfg.Hosts["devmac"].Wake.Broadcast = "<lan-broadcast-address>"
+	var buf bytes.Buffer
+
+	if err := WriteClient(&buf, cfg, "/tmp/config.toml", "devmac"); err != nil {
+		t.Fatalf("WriteClient returned error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "Readiness\n  ok") {
+		t.Fatalf("wake placeholders should not block readiness:\n%s", out)
+	}
+	if !strings.Contains(out, "Notes\n  wake MAC placeholder; wake flow is not ready") {
+		t.Fatalf("wake placeholder note missing:\n%s", out)
+	}
+}
+
 func testConfig() *config.Config {
 	return &config.Config{
 		Defaults: config.Defaults{Alias: "devmac"},

@@ -86,6 +86,14 @@ func WriteClient(out io.Writer, cfg *config.Config, path, alias string) error {
 			fmt.Fprintf(out, "  incomplete: %s\n", finding)
 		}
 	}
+	notes := notes(host)
+	if len(notes) > 0 {
+		fmt.Fprintln(out)
+		fmt.Fprintln(out, "Notes")
+		for _, note := range notes {
+			fmt.Fprintf(out, "  %s\n", note)
+		}
+	}
 
 	return nil
 }
@@ -103,11 +111,16 @@ func findings(host *config.Host) []string {
 	if host.IdentityFile == "" {
 		out = append(out, "identity_file missing")
 	}
+	return out
+}
+
+func notes(host *config.Host) []string {
+	out := make([]string, 0)
 	if isPlaceholder(host.Wake.MACAddress) {
-		out = append(out, "wake MAC placeholder")
+		out = append(out, "wake MAC placeholder; wake flow is not ready")
 	}
 	if isPlaceholder(host.Wake.Broadcast) {
-		out = append(out, "wake broadcast placeholder")
+		out = append(out, "wake broadcast placeholder; wake flow is not ready")
 	}
 	return out
 }

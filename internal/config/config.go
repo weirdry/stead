@@ -279,12 +279,6 @@ func hostFindings(host *Host) []string {
 	if host.User == "" {
 		findings = append(findings, "user missing")
 	}
-	if isPlaceholder(host.Wake.MACAddress) {
-		findings = append(findings, "wake MAC placeholder")
-	}
-	if isPlaceholder(host.Wake.Broadcast) {
-		findings = append(findings, "wake broadcast placeholder")
-	}
 	return findings
 }
 
