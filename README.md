@@ -38,6 +38,7 @@ stead config init --dry-run
 stead doctor
 
 stead host status
+stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host install
 stead host harden
 stead host uninstall
@@ -63,12 +64,16 @@ stead connect --alias devmac --wake
 
 ```bash
 stead client init --alias devmac --discover tailscale --yes
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 ssh devmac
 ```
 
 `--discover tailscale` reads `tailscale status --json` peer metadata to find the host's MagicDNS name or Tailscale IP. This is still normal OpenSSH-over-Tailscale; Tailscale SSH is not used.
+
+`stead host authorize` runs on the host Mac. It appends a client public key to `~/.ssh/authorized_keys` if it is not already present.
 
 ## Install Model
 

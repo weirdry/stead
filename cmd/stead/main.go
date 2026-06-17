@@ -8,6 +8,7 @@ import (
 	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/clientinit"
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/status"
 )
@@ -47,8 +48,37 @@ func runHost(args []string) error {
 	if len(args) == 1 && args[0] == "status" {
 		return status.RunHost(os.Stdout)
 	}
+	if len(args) >= 1 && args[0] == "authorize" {
+		return runHostAuthorize(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
+}
+
+func runHostAuthorize(args []string) error {
+	opts := hostauth.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--public-key":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--public-key requires a value")
+			}
+			opts.PublicKey = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host authorize option %q", args[i])
+		}
+	}
+	return hostauth.Run(opts)
 }
 
 func runClient(args []string) error {
@@ -230,6 +260,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
+	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead client init [--alias name] [--hostname host] [--discover tailscale] [--user user] [--identity-file path] [--dry-run] [--yes]")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")

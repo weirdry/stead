@@ -85,6 +85,7 @@ stead config init --dry-run
 stead doctor
 
 stead host status
+stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host install
 stead host harden
 stead host uninstall
@@ -108,6 +109,8 @@ Example flags:
 
 ```bash
 stead host install --user ed --tmux-session main
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead host harden --user ed --disable-password
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
@@ -165,6 +168,8 @@ Recommended setup flow:
 
 ```bash
 stead client init --alias devmac --discover tailscale --yes
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 ```
@@ -186,6 +191,8 @@ Default client identity path:
 ```
 
 Generated private keys stay on the client machine. `stead` may print the generated public key so the user can install it on the host's `~/.ssh/authorized_keys`.
+
+`stead host authorize` runs on the host Mac. It creates `~/.ssh` if needed, creates or updates `~/.ssh/authorized_keys`, and appends a client public key only when it is not already present.
 
 Example generated SSH config:
 
