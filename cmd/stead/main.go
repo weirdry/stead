@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/clientinit"
@@ -12,6 +13,7 @@ import (
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/setup"
 	"github.com/ed/stead/internal/status"
+	"github.com/ed/stead/internal/verify"
 )
 
 func main() {
@@ -32,6 +34,8 @@ func run(args []string) error {
 		return status.Run(os.Stdout)
 	case "setup":
 		return runSetup(args[1:])
+	case "verify":
+		return runVerify(args[1:])
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -69,6 +73,34 @@ func runSetup(args []string) error {
 		return fmt.Errorf("setup currently requires --dry-run")
 	}
 	return setup.WritePlan(setup.Options{Alias: alias, Out: os.Stdout})
+}
+
+func runVerify(args []string) error {
+	opts := verify.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--timeout":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--timeout requires a value")
+			}
+			timeout, err := time.ParseDuration(args[i+1])
+			if err != nil {
+				return err
+			}
+			opts.Timeout = timeout
+			i++
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown verify option %q", args[i])
+		}
+	}
+	return verify.Run(opts)
 }
 
 func runHost(args []string) error {
@@ -344,6 +376,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run")
+	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")

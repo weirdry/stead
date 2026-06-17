@@ -115,6 +115,9 @@ func WritePlan(opts Options) error {
 		fmt.Fprintln(out, "  Public key handoff: run on the host if not already authorized")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey)+" --dry-run")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey))
+		if aliasState.Host == "ok" {
+			steps = append(steps, "stead verify --alias "+alias)
+		}
 	}
 	fmt.Fprintln(out)
 

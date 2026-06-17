@@ -57,6 +57,7 @@ func TestWritePlanCompleteClientSetup(t *testing.T) {
 		"Public key: ok",
 		"Host devmac: ok",
 		"stead host authorize --alias devmac --public-key 'ssh-ed25519 test-public-key stead devmac' --dry-run",
+		"stead verify --alias devmac",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)

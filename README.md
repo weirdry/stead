@@ -32,6 +32,7 @@ client machine
 ```bash
 stead status
 stead setup --alias devmac --dry-run
+stead verify --alias devmac
 stead config path
 stead config show
 stead config init
@@ -77,10 +78,13 @@ stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' 
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
+stead verify --alias devmac
 ssh devmac
 ```
 
 `--discover tailscale` reads `tailscale status --json` peer metadata to find the host's MagicDNS name or Tailscale IP. This is still normal OpenSSH-over-Tailscale; Tailscale SSH is not used.
+
+`stead verify` runs a non-interactive `ssh` check using `BatchMode=yes`, so it verifies key-based login without prompting for a password.
 
 `stead host authorize` runs on the host Mac. It appends a client public key to `~/.ssh/authorized_keys` if it is not already present.
 
