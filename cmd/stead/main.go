@@ -51,6 +51,9 @@ func runHost(args []string) error {
 	if len(args) >= 1 && args[0] == "authorize" {
 		return runHostAuthorize(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "unauthorize" {
+		return runHostUnauthorize(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
 }
@@ -81,6 +84,32 @@ func runHostAuthorize(args []string) error {
 	return hostauth.Run(opts)
 }
 
+func runHostUnauthorize(args []string) error {
+	opts := hostauth.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--public-key":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--public-key requires a value")
+			}
+			opts.PublicKey = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host unauthorize option %q", args[i])
+		}
+	}
+	return hostauth.RunUnauthorize(opts)
+}
+
 func runClient(args []string) error {
 	if len(args) == 1 && args[0] == "status" {
 		return status.RunClient(os.Stdout)
@@ -90,6 +119,9 @@ func runClient(args []string) error {
 	}
 	if len(args) >= 1 && args[0] == "apply" {
 		return runClientApply(args[1:])
+	}
+	if len(args) >= 1 && args[0] == "unapply" {
+		return runClientUnapply(args[1:])
 	}
 	if len(args) >= 1 && args[0] == "init" {
 		return runClientInit(args[1:])
@@ -152,6 +184,31 @@ func runClientApply(args []string) error {
 		return clientconfig.WriteDryRun(os.Stdout, cfg, path, sshConfigPath, alias)
 	}
 	return clientconfig.WriteApply(os.Stdout, cfg, path, sshConfigPath, alias)
+}
+
+func runClientUnapply(args []string) error {
+	alias := ""
+	dryRun := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			alias = args[i+1]
+			i++
+		case "--dry-run":
+			dryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client unapply option %q", args[i])
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	return clientconfig.WriteUnapply(os.Stdout, clientconfig.DefaultSSHConfigPath(home), alias, dryRun)
 }
 
 func runClientInit(args []string) error {
@@ -261,10 +318,12 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
+	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead client status")
 	fmt.Fprintln(out, "  stead client init [--alias name] [--hostname host] [--discover tailscale] [--user user] [--identity-file path] [--dry-run] [--yes]")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
+	fmt.Fprintln(out, "  stead client unapply --alias name [--dry-run]")
 	fmt.Fprintln(out, "  stead config path")
 	fmt.Fprintln(out, "  stead config show")
 	fmt.Fprintln(out, "  stead config init")

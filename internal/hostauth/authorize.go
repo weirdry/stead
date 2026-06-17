@@ -18,8 +18,9 @@ type Options struct {
 }
 
 type Plan struct {
-	State string
-	Line  string
+	State   string
+	Line    string
+	Content []byte
 }
 
 func Run(opts Options) error {
@@ -101,6 +102,73 @@ func Run(opts Options) error {
 	return nil
 }
 
+func RunUnauthorize(opts Options) error {
+	if opts.Out == nil {
+		opts.Out = io.Discard
+	}
+	path := opts.AuthorizedKeysPath
+	if path == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		path = filepath.Join(home, ".ssh", "authorized_keys")
+	}
+
+	line, err := normalizePublicKey(opts.PublicKey, opts.Alias)
+	if err != nil {
+		return err
+	}
+
+	existing, existed, mode, err := readExisting(path)
+	if err != nil {
+		return err
+	}
+	plan := PlanRemoval(existing, line)
+
+	fmt.Fprintln(opts.Out, "Stead host unauthorize")
+	fmt.Fprintln(opts.Out)
+	fmt.Fprintf(opts.Out, "AuthorizedKeys: %s\n", path)
+	if opts.Alias != "" {
+		fmt.Fprintf(opts.Out, "Alias: %s\n", opts.Alias)
+	}
+	if opts.DryRun {
+		fmt.Fprintln(opts.Out, "Mode: dry-run")
+	} else {
+		fmt.Fprintln(opts.Out, "Mode: apply")
+	}
+	fmt.Fprintln(opts.Out)
+
+	if opts.DryRun {
+		switch plan.State {
+		case "remove":
+			fmt.Fprintln(opts.Out, "Action: would remove public key")
+		case "absent":
+			fmt.Fprintln(opts.Out, "Action: no changes needed")
+		}
+		fmt.Fprintln(opts.Out, "No files were modified.")
+		return nil
+	}
+
+	if plan.State == "absent" {
+		fmt.Fprintln(opts.Out, "Action: no changes needed")
+		fmt.Fprintln(opts.Out, "No files were modified.")
+		return nil
+	}
+	if !existed {
+		return fmt.Errorf("authorized_keys does not exist")
+	}
+	if err := os.WriteFile(path, plan.Content, mode); err != nil {
+		return err
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return err
+	}
+
+	fmt.Fprintln(opts.Out, "Action: removed public key")
+	return nil
+}
+
 func PlanContent(existing []byte, line string) Plan {
 	target := keyIdentity(line)
 	for _, existingLine := range strings.Split(string(existing), "\n") {
@@ -109,6 +177,39 @@ func PlanContent(existing []byte, line string) Plan {
 		}
 	}
 	return Plan{State: "add", Line: line}
+}
+
+func PlanRemoval(existing []byte, line string) Plan {
+	target := keyIdentity(line)
+	lines := strings.Split(string(existing), "\n")
+	removed := false
+	out := make([]string, 0, len(lines))
+	for _, existingLine := range lines {
+		if keyIdentity(existingLine) == target {
+			removed = true
+			continue
+		}
+		out = append(out, existingLine)
+	}
+	if !removed {
+		return Plan{State: "absent", Line: line, Content: existing}
+	}
+	return Plan{State: "remove", Line: line, Content: []byte(strings.Join(out, "\n"))}
+}
+
+func readExisting(path string) ([]byte, bool, os.FileMode, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false, 0o600, nil
+		}
+		return nil, false, 0, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false, 0, err
+	}
+	return data, true, info.Mode().Perm(), nil
 }
 
 func keyIdentity(line string) string {

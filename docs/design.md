@@ -86,6 +86,7 @@ stead doctor
 
 stead host status
 stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
+stead host unauthorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host install
 stead host harden
 stead host uninstall
@@ -98,6 +99,7 @@ stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --ye
 stead client plan --alias devmac
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
+stead client unapply --alias devmac --dry-run
 stead client uninstall
 
 stead wake --alias devmac
@@ -193,6 +195,15 @@ Default client identity path:
 Generated private keys stay on the client machine. `stead` may print the generated public key so the user can install it on the host's `~/.ssh/authorized_keys`.
 
 `stead host authorize` runs on the host Mac. It creates `~/.ssh` if needed, creates or updates `~/.ssh/authorized_keys`, and appends a client public key only when it is not already present.
+
+Reversal commands should be precise:
+
+```bash
+stead client unapply --alias devmac --dry-run
+stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
+```
+
+`client unapply` removes only the matching managed SSH config marker block. `host unauthorize` removes only matching public key material, regardless of comment.
 
 Example generated SSH config:
 

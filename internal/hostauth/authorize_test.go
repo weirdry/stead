@@ -153,6 +153,106 @@ func TestRunRejectsInvalidPublicKeys(t *testing.T) {
 	}
 }
 
+func TestRunUnauthorizeDryRunDoesNotWrite(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".ssh", "authorized_keys")
+	original := testPublicKey + " stead stead-devmac\n"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := RunUnauthorize(Options{
+		Alias:              "stead-devmac",
+		PublicKey:          testPublicKey,
+		AuthorizedKeysPath: path,
+		DryRun:             true,
+		Out:                &buf,
+	}); err != nil {
+		t.Fatalf("RunUnauthorize returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if string(data) != original {
+		t.Fatalf("dry-run modified authorized_keys:\n%s", string(data))
+	}
+	if !strings.Contains(buf.String(), "Action: would remove public key") {
+		t.Fatalf("output missing remove action:\n%s", buf.String())
+	}
+}
+
+func TestRunUnauthorizeRemovesPublicKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".ssh", "authorized_keys")
+	keep := "ssh-ed25519 keep-key keep-comment"
+	remove := testPublicKey + " older-comment"
+	original := keep + "\n" + remove + "\n"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := RunUnauthorize(Options{
+		Alias:              "stead-devmac",
+		PublicKey:          testPublicKey + " stead stead-devmac",
+		AuthorizedKeysPath: path,
+		Out:                &buf,
+	}); err != nil {
+		t.Fatalf("RunUnauthorize returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if strings.Contains(string(data), testPublicKey) {
+		t.Fatalf("public key still present:\n%s", string(data))
+	}
+	if !strings.Contains(string(data), keep) {
+		t.Fatalf("unrelated key not preserved:\n%s", string(data))
+	}
+	assertMode(t, path, 0o600)
+	if !strings.Contains(buf.String(), "Action: removed public key") {
+		t.Fatalf("output missing removed action:\n%s", buf.String())
+	}
+}
+
+func TestRunUnauthorizeAbsentNoOps(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".ssh", "authorized_keys")
+	original := "ssh-ed25519 other-key other\n"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := RunUnauthorize(Options{
+		Alias:              "stead-devmac",
+		PublicKey:          testPublicKey,
+		AuthorizedKeysPath: path,
+		Out:                &buf,
+	}); err != nil {
+		t.Fatalf("RunUnauthorize returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if string(data) != original {
+		t.Fatalf("absent unauthorize modified authorized_keys:\n%s", string(data))
+	}
+	if !strings.Contains(buf.String(), "Action: no changes needed") {
+		t.Fatalf("output missing no-op action:\n%s", buf.String())
+	}
+}
+
 func assertMode(t *testing.T, path string, want os.FileMode) {
 	t.Helper()
 	info, err := os.Stat(path)

@@ -279,6 +279,105 @@ func TestWriteApplyMalformedBlockDoesNotModifySSHConfig(t *testing.T) {
 	}
 }
 
+func TestWriteUnapplyDryRunDoesNotModifySSHConfig(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	original := "Host other\n    HostName other.example\n\n" + ManagedBlock("devmac", testHost())
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteUnapply(&buf, sshConfig, "devmac", true); err != nil {
+		t.Fatalf("WriteUnapply returned error: %v", err)
+	}
+	data, err := os.ReadFile(sshConfig)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if string(data) != original {
+		t.Fatalf("dry-run modified config:\n%s", string(data))
+	}
+	if !strings.Contains(buf.String(), "Action: would remove managed SSH config block") {
+		t.Fatalf("output missing remove action:\n%s", buf.String())
+	}
+}
+
+func TestWriteUnapplyRemovesManagedBlock(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	before := "Host before\n    HostName before.example\n\n"
+	after := "Host after\n    HostName after.example\n"
+	original := before + ManagedBlock("devmac", testHost()) + after
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteUnapply(&buf, sshConfig, "devmac", false); err != nil {
+		t.Fatalf("WriteUnapply returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(sshConfig)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	got := string(data)
+	if strings.Contains(got, "# BEGIN stead devmac") {
+		t.Fatalf("managed block still present:\n%s", got)
+	}
+	if !strings.Contains(got, "Host before") || !strings.Contains(got, "Host after") {
+		t.Fatalf("unrelated content not preserved:\n%s", got)
+	}
+	if backups := backupFiles(t, sshConfig); len(backups) != 1 {
+		t.Fatalf("backup count = %d, want 1", len(backups))
+	}
+	if !strings.Contains(buf.String(), "Action: removed managed SSH config block") {
+		t.Fatalf("output missing removed action:\n%s", buf.String())
+	}
+}
+
+func TestWriteUnapplyAbsentNoOps(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	original := "Host other\n    HostName other.example\n"
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := WriteUnapply(&buf, sshConfig, "devmac", false); err != nil {
+		t.Fatalf("WriteUnapply returned error: %v", err)
+	}
+	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
+		t.Fatalf("unexpected backups: %#v", backups)
+	}
+	if !strings.Contains(buf.String(), "Action: no changes needed") {
+		t.Fatalf("output missing no-op action:\n%s", buf.String())
+	}
+}
+
+func TestWriteUnapplyMalformedBlockDoesNotModifySSHConfig(t *testing.T) {
+	dir := t.TempDir()
+	sshConfig := filepath.Join(dir, "config")
+	original := "# BEGIN stead devmac\nHost devmac\n"
+	if err := os.WriteFile(sshConfig, []byte(original), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	err := WriteUnapply(&bytes.Buffer{}, sshConfig, "devmac", false)
+	if err == nil {
+		t.Fatal("expected malformed marker error")
+	}
+	data, readErr := os.ReadFile(sshConfig)
+	if readErr != nil {
+		t.Fatalf("ReadFile returned error: %v", readErr)
+	}
+	if string(data) != original {
+		t.Fatalf("malformed unapply modified config:\n%s", string(data))
+	}
+}
+
 func testConfig() *config.Config {
 	return &config.Config{
 		Defaults: config.Defaults{Alias: "devmac"},

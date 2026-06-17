@@ -150,6 +150,67 @@ func WriteApply(out io.Writer, cfg *config.Config, cfgPath, sshConfigPath, alias
 	return nil
 }
 
+func WriteUnapply(out io.Writer, sshConfigPath, alias string, dryRun bool) error {
+	if alias == "" {
+		return fmt.Errorf("--alias is required")
+	}
+	existing, existed, mode, err := readExisting(sshConfigPath)
+	if err != nil {
+		return err
+	}
+
+	change, err := PlanRemoval(existing, sshConfigPath, alias)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, "Stead client unapply")
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "SSH config: %s\n", sshConfigPath)
+	fmt.Fprintf(out, "Alias: %s\n", alias)
+	if dryRun {
+		fmt.Fprintln(out, "Mode: dry-run")
+	} else {
+		fmt.Fprintln(out, "Mode: apply")
+	}
+	if hasInclude(existing) {
+		fmt.Fprintln(out, "Note: Include directive present; included files are not expanded")
+	}
+	fmt.Fprintln(out)
+
+	if dryRun {
+		switch change.State {
+		case "remove":
+			fmt.Fprintln(out, "Action: would remove managed SSH config block")
+		case "absent":
+			fmt.Fprintln(out, "Action: no changes needed")
+		}
+		fmt.Fprintln(out, "No files were modified.")
+		return nil
+	}
+
+	if change.State == "absent" {
+		fmt.Fprintln(out, "Action: no changes needed")
+		fmt.Fprintln(out, "No files were modified.")
+		return nil
+	}
+	if !existed {
+		return fmt.Errorf("SSH config does not exist")
+	}
+
+	backupPath := sshConfigPath + ".stead-backup-" + time.Now().UTC().Format("20060102T150405.000000000Z")
+	if err := os.WriteFile(backupPath, existing, mode); err != nil {
+		return err
+	}
+	if err := writeAtomic(sshConfigPath, change.NewContent, mode); err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, "Action: removed managed SSH config block")
+	fmt.Fprintf(out, "Backup: %s\n", backupPath)
+	return nil
+}
+
 func Plan(existing []byte, path, alias string, host *config.Host) (Change, error) {
 	block := ManagedBlock(alias, host)
 	state, newContent, err := plannedContent(existing, alias, block)
@@ -162,6 +223,23 @@ func Plan(existing []byte, path, alias string, host *config.Host) (Change, error
 		Block:      block,
 		State:      state,
 		NewContent: newContent,
+	}, nil
+}
+
+func PlanRemoval(existing []byte, path, alias string) (Change, error) {
+	current := string(existing)
+	beginIndex, endIndex, found, err := managedRange(current, alias)
+	if err != nil {
+		return Change{}, err
+	}
+	if !found {
+		return Change{Alias: alias, Path: path, State: "absent", NewContent: existing}, nil
+	}
+	return Change{
+		Alias:      alias,
+		Path:       path,
+		State:      "remove",
+		NewContent: []byte(current[:beginIndex] + current[endIndex:]),
 	}, nil
 }
 
