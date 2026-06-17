@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/tailscale"
 )
 
 type Options struct {
@@ -20,14 +21,17 @@ type Options struct {
 	User         string
 	IdentityFile string
 	ConfigPath   string
+	Discover     string
 	DryRun       bool
 	Yes          bool
 	In           io.Reader
 	Out          io.Writer
 	Keygen       Keygen
+	Discoverer   Discoverer
 }
 
 type Keygen func(path, comment string) error
+type Discoverer func(alias string) (tailscale.Peer, error)
 
 func Run(opts Options) error {
 	if opts.Out == nil {
@@ -39,11 +43,14 @@ func Run(opts Options) error {
 	if opts.Keygen == nil {
 		opts.Keygen = SSHKeygen
 	}
+	if opts.Discoverer == nil {
+		opts.Discoverer = tailscale.DiscoverPeer
+	}
 
 	alias := valueOrDefault(opts.Alias, "devmac")
 	localUser := valueOrDefault(opts.User, currentUserName())
 	identityFile := valueOrDefault(opts.IdentityFile, "~/.ssh/stead_"+alias+"_ed25519")
-	hostname, err := hostname(opts)
+	hostname, discovered, err := hostname(opts, alias)
 	if err != nil {
 		return err
 	}
@@ -86,6 +93,9 @@ func Run(opts Options) error {
 	fmt.Fprintf(opts.Out, "Config: %s\n", path)
 	fmt.Fprintf(opts.Out, "Alias: %s\n", alias)
 	fmt.Fprintf(opts.Out, "Hostname: %s\n", hostname)
+	if discovered.HostName != "" || discovered.IP != "" {
+		fmt.Fprintf(opts.Out, "Discovered via Tailscale: %s %s\n", valueOrUnset(discovered.HostName), valueOrUnset(discovered.IP))
+	}
 	fmt.Fprintf(opts.Out, "User: %s\n", localUser)
 	fmt.Fprintf(opts.Out, "IdentityFile: %s\n", identityFile)
 	if opts.DryRun {
@@ -146,23 +156,37 @@ func SSHKeygen(path, comment string) error {
 	return cmd.Run()
 }
 
-func hostname(opts Options) (string, error) {
+func hostname(opts Options, alias string) (string, tailscale.Peer, error) {
 	if opts.Hostname != "" {
-		return opts.Hostname, nil
+		return opts.Hostname, tailscale.Peer{}, nil
+	}
+	if opts.Discover != "" {
+		if opts.Discover != "tailscale" {
+			return "", tailscale.Peer{}, fmt.Errorf("unsupported discovery source %q", opts.Discover)
+		}
+		peer, err := opts.Discoverer(alias)
+		if err != nil {
+			return "", tailscale.Peer{}, err
+		}
+		host := peer.Hostname()
+		if host == "" {
+			return "", tailscale.Peer{}, fmt.Errorf("Tailscale peer %q has no usable hostname or IP", alias)
+		}
+		return host, peer, nil
 	}
 	if opts.Yes {
-		return "", fmt.Errorf("--hostname is required with --yes")
+		return "", tailscale.Peer{}, fmt.Errorf("--hostname or --discover is required with --yes")
 	}
 	fmt.Fprint(opts.Out, "Hostname: ")
 	line, err := bufio.NewReader(opts.In).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
-		return "", err
+		return "", tailscale.Peer{}, err
 	}
 	line = strings.TrimSpace(line)
 	if line == "" {
-		return "", fmt.Errorf("hostname is required")
+		return "", tailscale.Peer{}, fmt.Errorf("hostname is required")
 	}
-	return line, nil
+	return line, tailscale.Peer{}, nil
 }
 
 func loadOrNew(path string) (*config.Config, string, bool, error) {
@@ -204,6 +228,13 @@ func valueOrDefault(value, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func valueOrUnset(value string) string {
+	if value == "" {
+		return "(unset)"
+	}
+	return value
 }
 
 func currentUserName() string {

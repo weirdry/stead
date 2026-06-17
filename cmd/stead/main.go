@@ -155,6 +155,12 @@ func runClientInit(args []string) error {
 			}
 			opts.IdentityFile = args[i+1]
 			i++
+		case "--discover":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--discover requires a value")
+			}
+			opts.Discover = args[i+1]
+			i++
 		case "--dry-run":
 			opts.DryRun = true
 		case "--yes":
@@ -225,7 +231,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead client status")
-	fmt.Fprintln(out, "  stead client init [--alias name] [--hostname host] [--user user] [--identity-file path] [--dry-run] [--yes]")
+	fmt.Fprintln(out, "  stead client init [--alias name] [--hostname host] [--discover tailscale] [--user user] [--identity-file path] [--dry-run] [--yes]")
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
 	fmt.Fprintln(out, "  stead config path")

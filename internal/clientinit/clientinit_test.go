@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/tailscale"
 )
 
 func TestRunDryRunDoesNotWriteFiles(t *testing.T) {
@@ -132,7 +133,66 @@ func TestRunYesRequiresHostname(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected hostname error")
 	}
-	if !strings.Contains(err.Error(), "--hostname is required with --yes") {
+	if !strings.Contains(err.Error(), "--hostname or --discover is required with --yes") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunDiscoversTailscaleHostname(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+	keyPath := filepath.Join(dir, "stead_devmac_ed25519")
+	var buf bytes.Buffer
+	var discoveredAlias string
+
+	err := Run(Options{
+		Alias:        "devmac",
+		User:         "ed",
+		IdentityFile: keyPath,
+		ConfigPath:   cfgPath,
+		Discover:     "tailscale",
+		DryRun:       true,
+		Yes:          true,
+		Out:          &buf,
+		Discoverer: func(alias string) (tailscale.Peer, error) {
+			discoveredAlias = alias
+			return tailscale.Peer{
+				HostName: "devmac",
+				DNSName:  "devmac.tailnet.example",
+				IP:       "ts-ip",
+				Online:   true,
+			}, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if discoveredAlias != "devmac" {
+		t.Fatalf("discovered alias = %q", discoveredAlias)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"Hostname: devmac.tailnet.example",
+		"Discovered via Tailscale: devmac ts-ip",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestRunRejectsUnsupportedDiscovery(t *testing.T) {
+	err := Run(Options{
+		Alias:    "devmac",
+		Discover: "other",
+		DryRun:   true,
+		Yes:      true,
+		Out:      &bytes.Buffer{},
+	})
+	if err == nil {
+		t.Fatal("expected unsupported discovery error")
+	}
+	if !strings.Contains(err.Error(), `unsupported discovery source "other"`) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

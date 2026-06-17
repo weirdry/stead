@@ -92,6 +92,7 @@ stead host uninstall
 stead client status
 stead client init
 stead client init --alias devmac
+stead client init --alias devmac --discover tailscale --yes
 stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
 stead client plan --alias devmac
 stead client apply --dry-run --alias devmac
@@ -163,7 +164,7 @@ It may:
 Recommended setup flow:
 
 ```bash
-stead client init --alias devmac
+stead client init --alias devmac --discover tailscale --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 ```
@@ -173,6 +174,8 @@ stead client apply --alias devmac
 ```bash
 stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
 ```
+
+When Tailscale is installed on the client, `stead client init --discover tailscale` may call `tailscale status --json` to find a peer matching the alias. It should prefer the peer's MagicDNS name and fall back to its Tailscale IP. This requires a usable local Tailscale CLI. This is discovery only; it must not enable or use Tailscale SSH.
 
 The hostname can be a Tailscale IP or MagicDNS name. This is not Tailscale SSH; it is only the network address used by normal OpenSSH.
 
