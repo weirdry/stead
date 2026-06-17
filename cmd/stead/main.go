@@ -10,6 +10,7 @@ import (
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/plan"
+	"github.com/ed/stead/internal/setup"
 	"github.com/ed/stead/internal/status"
 )
 
@@ -29,6 +30,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "status":
 		return status.Run(os.Stdout)
+	case "setup":
+		return runSetup(args[1:])
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -42,6 +45,30 @@ func run(args []string) error {
 		printUsage(os.Stderr)
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runSetup(args []string) error {
+	alias := ""
+	dryRun := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			alias = args[i+1]
+			i++
+		case "--dry-run":
+			dryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown setup option %q", args[i])
+		}
+	}
+	if !dryRun {
+		return fmt.Errorf("setup currently requires --dry-run")
+	}
+	return setup.WritePlan(setup.Options{Alias: alias, Out: os.Stdout})
 }
 
 func runHost(args []string) error {
@@ -316,6 +343,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  stead status")
+	fmt.Fprintln(out, "  stead setup --alias name --dry-run")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")

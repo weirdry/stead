@@ -78,6 +78,7 @@ If Tailscale SSH is detected, `stead` should report it as external and unmanaged
 
 ```bash
 stead status
+stead setup --alias devmac --dry-run
 stead config path
 stead config show
 stead config init
@@ -169,6 +170,7 @@ It may:
 Recommended setup flow:
 
 ```bash
+stead setup --alias devmac --dry-run
 stead client init --alias devmac --discover tailscale --yes
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'

@@ -31,6 +31,7 @@ client machine
 
 ```bash
 stead status
+stead setup --alias devmac --dry-run
 stead config path
 stead config show
 stead config init
@@ -61,6 +62,12 @@ stead connect --alias devmac --wake
 ```
 
 ## Client Setup
+
+Use the setup planner to see the remaining local steps without changing files:
+
+```bash
+stead setup --alias devmac --dry-run
+```
 
 `stead client init` prepares one client machine for one host. It can prompt for the host name, creates or updates `~/.config/stead/config.toml`, and generates a local Ed25519 SSH key if the configured key does not exist.
 
