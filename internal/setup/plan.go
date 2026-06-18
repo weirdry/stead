@@ -45,10 +45,11 @@ func WritePlan(opts Options) error {
 		return err
 	}
 
-	fmt.Fprintln(out, "Stead setup plan")
+	fmt.Fprintln(out, "Stead setup")
 	fmt.Fprintln(out)
 	fmt.Fprintf(out, "Alias: %s\n", alias)
-	fmt.Fprintln(out, "Mode: dry-run")
+	fmt.Fprintln(out, "Mode: dry-run (no files changed)")
+	fmt.Fprintln(out, "SSH: normal OpenSSH; Tailscale SSH is not used")
 	fmt.Fprintln(out)
 
 	steps := make([]string, 0)
@@ -144,11 +145,13 @@ func WritePlan(opts Options) error {
 
 	fmt.Fprintln(out, "Next steps")
 	if len(steps) == 0 {
-		fmt.Fprintf(out, "  ssh %s\n", alias)
+		fmt.Fprintln(out, "  Ready")
+		fmt.Fprintf(out, "  1. ssh %s\n", alias)
 		return nil
 	}
-	for _, step := range unique(steps) {
-		fmt.Fprintf(out, "  %s\n", step)
+	fmt.Fprintln(out, "  Run in order")
+	for i, step := range unique(steps) {
+		fmt.Fprintf(out, "  %d. %s\n", i+1, step)
 	}
 	return nil
 }

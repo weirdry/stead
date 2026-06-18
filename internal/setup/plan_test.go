@@ -27,7 +27,7 @@ func TestWritePlanMissingConfig(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"Stead setup plan",
+		"Stead setup",
 		"Alias: devmac",
 		"Config: missing",
 		"stead client init --alias devmac --discover tailscale --yes",
