@@ -13,7 +13,16 @@ const (
 	reset  = "\033[0m"
 )
 
+var colorDisabled bool
+
+func DisableColor() {
+	colorDisabled = true
+}
+
 func ColorEnabled(out io.Writer) bool {
+	if colorDisabled {
+		return false
+	}
 	if os.Getenv("NO_COLOR") != "" {
 		return false
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/setup"
 	"github.com/ed/stead/internal/status"
+	"github.com/ed/stead/internal/ui"
 	"github.com/ed/stead/internal/verify"
 )
 
@@ -24,6 +25,7 @@ func main() {
 }
 
 func run(args []string) error {
+	args = parseGlobalOptions(args)
 	if len(args) == 0 {
 		printUsage(os.Stdout)
 		return nil
@@ -49,6 +51,18 @@ func run(args []string) error {
 		printUsage(os.Stderr)
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func parseGlobalOptions(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--no-color" {
+			ui.DisableColor()
+			continue
+		}
+		out = append(out, arg)
+	}
+	return out
 }
 
 func runSetup(args []string) error {
@@ -377,7 +391,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "stead manages personal OpenSSH remote-dev setup")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Usage:")
-	fmt.Fprintln(out, "  stead status")
+	fmt.Fprintln(out, "  stead [--no-color] status")
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead host status")

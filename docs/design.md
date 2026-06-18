@@ -78,6 +78,7 @@ If Tailscale SSH is detected, `stead` should report it as external and unmanaged
 
 ```bash
 stead status
+stead --no-color status
 stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
@@ -336,7 +337,7 @@ CLI output should stay quiet, readable, and script-friendly.
 
 - Use color only for status meaning: green `ok`, yellow warning or incomplete states, red failed or risky states.
 - Enable color only for interactive terminal output.
-- Disable color when output is redirected or `NO_COLOR` is set.
+- Disable color when output is redirected, `NO_COLOR` is set, or `--no-color` is passed.
 - Keep normal command output stable and copyable.
 - Reserve animation for future long-running interactive waits such as wake/connect.
 

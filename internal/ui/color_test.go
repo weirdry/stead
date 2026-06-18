@@ -22,3 +22,15 @@ func TestStateHonorsNoColor(t *testing.T) {
 		t.Fatalf("State should not contain ANSI escape sequence with NO_COLOR: %q", got)
 	}
 }
+
+func TestDisableColor(t *testing.T) {
+	previous := colorDisabled
+	t.Cleanup(func() {
+		colorDisabled = previous
+	})
+
+	DisableColor()
+	if ColorEnabled(os.Stdout) {
+		t.Fatal("ColorEnabled should be false after DisableColor")
+	}
+}
