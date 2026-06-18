@@ -12,6 +12,7 @@ import (
 
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/sshconfig"
+	"github.com/ed/stead/internal/ui"
 	"github.com/ed/stead/internal/verify"
 )
 
@@ -56,19 +57,19 @@ func WritePlan(opts Options) error {
 	var host *config.Host
 	if cfgErr != nil {
 		if errors.Is(cfgErr, os.ErrNotExist) {
-			fmt.Fprintf(out, "  Config: missing (%s)\n", cfgPath)
+			fmt.Fprintf(out, "  Config: %s (%s)\n", ui.State(out, "missing"), cfgPath)
 			steps = append(steps, "stead client init --alias "+alias+" --discover tailscale --yes")
 		} else {
 			return cfgErr
 		}
 	} else {
-		fmt.Fprintf(out, "  Config: ok (%s)\n", cfgPath)
+		fmt.Fprintf(out, "  Config: %s (%s)\n", ui.State(out, "ok"), cfgPath)
 		host = cfg.Hosts[alias]
 		if host == nil {
-			fmt.Fprintln(out, "  Host: missing")
+			fmt.Fprintf(out, "  Host: %s\n", ui.State(out, "missing"))
 			steps = append(steps, "stead client init --alias "+alias+" --discover tailscale --yes")
 		} else {
-			fmt.Fprintf(out, "  Host: ok\n")
+			fmt.Fprintf(out, "  Host: %s\n", ui.State(out, "ok"))
 			fmt.Fprintf(out, "  Hostname: %s\n", valueOrUnset(host.Hostname))
 			fmt.Fprintf(out, "  User: %s\n", valueOrUnset(host.User))
 			fmt.Fprintf(out, "  IdentityFile: %s\n", valueOrUnset(host.IdentityFile))
@@ -87,16 +88,16 @@ func WritePlan(opts Options) error {
 		}
 		pubPath := keyPath + ".pub"
 		if fileExists(keyPath) {
-			fmt.Fprintf(out, "  Private key: ok (%s)\n", host.IdentityFile)
+			fmt.Fprintf(out, "  Private key: %s (%s)\n", ui.State(out, "ok"), host.IdentityFile)
 		} else {
-			fmt.Fprintf(out, "  Private key: missing (%s)\n", host.IdentityFile)
+			fmt.Fprintf(out, "  Private key: %s (%s)\n", ui.State(out, "missing"), host.IdentityFile)
 			steps = append(steps, clientInitStep(alias, host.Hostname))
 		}
 		if data, err := os.ReadFile(pubPath); err == nil {
 			publicKey = strings.TrimSpace(string(data))
-			fmt.Fprintf(out, "  Public key: ok (%s.pub)\n", host.IdentityFile)
+			fmt.Fprintf(out, "  Public key: %s (%s.pub)\n", ui.State(out, "ok"), host.IdentityFile)
 		} else if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(out, "  Public key: missing (%s.pub)\n", host.IdentityFile)
+			fmt.Fprintf(out, "  Public key: %s (%s.pub)\n", ui.State(out, "missing"), host.IdentityFile)
 		} else {
 			return err
 		}
@@ -105,8 +106,8 @@ func WritePlan(opts Options) error {
 
 	fmt.Fprintln(out, "SSH alias")
 	aliasState := sshAliasState(sshConfigPath, alias)
-	fmt.Fprintf(out, "  ~/.ssh/config: %s\n", aliasState.Config)
-	fmt.Fprintf(out, "  Host %s: %s\n", alias, aliasState.Host)
+	fmt.Fprintf(out, "  ~/.ssh/config: %s\n", colorStatePrefix(out, aliasState.Config, statePrefix(aliasState.Config)))
+	fmt.Fprintf(out, "  Host %s: %s\n", alias, colorStatePrefix(out, aliasState.Host, statePrefix(aliasState.Host)))
 	if aliasState.Host != "ok" {
 		steps = append(steps, "stead client apply --dry-run --alias "+alias)
 		steps = append(steps, "stead client apply --alias "+alias)
@@ -127,10 +128,10 @@ func WritePlan(opts Options) error {
 	if publicKey == "" {
 		fmt.Fprintln(out, "  Public key handoff: pending until public key exists")
 	} else if verified {
-		fmt.Fprintln(out, "  SSH login: ok")
+		fmt.Fprintf(out, "  SSH login: %s\n", ui.State(out, "ok"))
 	} else {
 		if opts.Verify && verifyFailed {
-			fmt.Fprintln(out, "  SSH login: failed")
+			fmt.Fprintf(out, "  SSH login: %s\n", ui.State(out, "failed"))
 		}
 		fmt.Fprintln(out, "  Public key handoff: run on the host if not already authorized")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey)+" --dry-run")
@@ -166,6 +167,22 @@ func verifyAlias(alias string, runner verify.Runner) (bool, error) {
 		return false, nil
 	}
 	return false, nil
+}
+
+func colorStatePrefix(out io.Writer, detail, state string) string {
+	colored := ui.State(out, state)
+	if colored == state {
+		return detail
+	}
+	return colored + strings.TrimPrefix(detail, state)
+}
+
+func statePrefix(value string) string {
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return value
+	}
+	return fields[0]
 }
 
 type aliasState struct {

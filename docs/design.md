@@ -330,6 +330,16 @@ Before disabling password authentication:
 
 It should not delete user private keys by default. It may remove managed references and ask before deleting generated keys.
 
+## CLI UX
+
+CLI output should stay quiet, readable, and script-friendly.
+
+- Use color only for status meaning: green `ok`, yellow warning or incomplete states, red failed or risky states.
+- Enable color only for interactive terminal output.
+- Disable color when output is redirected or `NO_COLOR` is set.
+- Keep normal command output stable and copyable.
+- Reserve animation for future long-running interactive waits such as wake/connect.
+
 ## Install Model
 
 Private/local install is preferred:

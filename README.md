@@ -26,6 +26,7 @@ client machine
 - SSH keys and macOS user policy provide auth hardening.
 - tmux/zsh provide session continuity after login.
 - `stead` provides setup, status, connect, wake, and uninstall automation.
+- CLI color is terminal-aware and disabled for non-interactive output or `NO_COLOR`.
 
 ## Early CLI Shape
 

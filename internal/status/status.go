@@ -16,6 +16,7 @@ import (
 
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/sshconfig"
+	"github.com/ed/stead/internal/ui"
 )
 
 // Run prints a read-only snapshot of the local machine's Stead-relevant state.
@@ -208,7 +209,7 @@ func printClientSections(out io.Writer, s snapshot) {
 		if len(alias.Findings) > 0 {
 			detail += " (" + strings.Join(alias.Findings, ", ") + ")"
 		}
-		fmt.Fprintf(out, "  Alias %s: %s\n", alias.Alias, detail)
+		fmt.Fprintf(out, "  Alias %s: %s\n", alias.Alias, colorStatePrefix(out, detail, alias.State))
 		if alias.State != "missing" {
 			if alias.Host.HostName != "" {
 				fmt.Fprintf(out, "    HostName: %s\n", alias.Host.HostName)
@@ -242,7 +243,7 @@ func printStead(out io.Writer, s snapshot) {
 				if len(host.Findings) > 0 {
 					detail += " (" + strings.Join(host.Findings, ", ") + ")"
 				}
-				fmt.Fprintf(out, "    %s: %s\n", host.Alias, detail)
+				fmt.Fprintf(out, "    %s: %s\n", host.Alias, colorStatePrefix(out, detail, host.State))
 			}
 		}
 	}
@@ -251,18 +252,26 @@ func printStead(out io.Writer, s snapshot) {
 
 func printCheck(out io.Writer, label string, c check) {
 	if c.Detail == "" {
-		fmt.Fprintf(out, "  %s: %s\n", label, c.State)
+		fmt.Fprintf(out, "  %s: %s\n", label, ui.State(out, c.State))
 		return
 	}
-	fmt.Fprintf(out, "  %s: %s (%s)\n", label, c.State, c.Detail)
+	fmt.Fprintf(out, "  %s: %s (%s)\n", label, ui.State(out, c.State), c.Detail)
 }
 
 func printFinding(out io.Writer, f finding) {
 	if f.Detail == "" {
-		fmt.Fprintf(out, "  %s: %s\n", f.Label, f.State)
+		fmt.Fprintf(out, "  %s: %s\n", f.Label, ui.State(out, f.State))
 		return
 	}
-	fmt.Fprintf(out, "  %s: %s (%s)\n", f.Label, f.State, f.Detail)
+	fmt.Fprintf(out, "  %s: %s (%s)\n", f.Label, ui.State(out, f.State), f.Detail)
+}
+
+func colorStatePrefix(out io.Writer, detail, state string) string {
+	colored := ui.State(out, state)
+	if colored == state {
+		return detail
+	}
+	return colored + strings.TrimPrefix(detail, state)
 }
 
 func lookPath(name string) check {

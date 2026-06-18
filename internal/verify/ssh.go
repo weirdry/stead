@@ -7,6 +7,8 @@ import (
 	"io"
 	"os/exec"
 	"time"
+
+	"github.com/ed/stead/internal/ui"
 )
 
 type Options struct {
@@ -46,16 +48,16 @@ func Run(opts Options) error {
 
 	err := runner(ctx, opts.Alias)
 	if err == nil {
-		fmt.Fprintln(out, "Result: ok")
+		fmt.Fprintf(out, "Result: %s\n", ui.State(out, "ok"))
 		fmt.Fprintf(out, "Next: ssh %s\n", opts.Alias)
 		return nil
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		fmt.Fprintln(out, "Result: failed")
+		fmt.Fprintf(out, "Result: %s\n", ui.State(out, "failed"))
 		fmt.Fprintf(out, "Reason: timed out after %s\n", timeout)
 		return nil
 	}
-	fmt.Fprintln(out, "Result: failed")
+	fmt.Fprintf(out, "Result: %s\n", ui.State(out, "failed"))
 	fmt.Fprintf(out, "Reason: %v\n", err)
 	return nil
 }
