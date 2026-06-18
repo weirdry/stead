@@ -23,6 +23,14 @@ func TestStateHonorsNoColor(t *testing.T) {
 	}
 }
 
+func TestStateHonorsDumbTerminal(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	got := State(os.Stdout, "ok")
+	if strings.Contains(got, "\033[") {
+		t.Fatalf("State should not contain ANSI escape sequence with TERM=dumb: %q", got)
+	}
+}
+
 func TestDisableColor(t *testing.T) {
 	previous := colorDisabled
 	t.Cleanup(func() {

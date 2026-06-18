@@ -336,8 +336,10 @@ It should not delete user private keys by default. It may remove managed referen
 CLI output should stay quiet, readable, and script-friendly.
 
 - Use color only for status meaning: green `ok`, yellow warning or incomplete states, red failed or risky states.
+- Separate command title, sections, and rows with plain ASCII structure that remains readable without color.
+- Use aligned label columns for status-style output so state values are easy to scan vertically.
 - Enable color only for interactive terminal output.
-- Disable color when output is redirected, `NO_COLOR` is set, or `--no-color` is passed.
+- Disable color when output is redirected, `TERM=dumb`, `NO_COLOR` is set, or `--no-color` is passed.
 - Keep normal command output stable and copyable.
 - Reserve animation for future long-running interactive waits such as wake/connect.
 

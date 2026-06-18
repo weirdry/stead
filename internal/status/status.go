@@ -123,6 +123,7 @@ func collect() snapshot {
 
 func printCombined(out io.Writer, s snapshot) {
 	fmt.Fprintln(out, "Stead status")
+	fmt.Fprintln(out, "============")
 	fmt.Fprintln(out)
 
 	printSystem(out, s)
@@ -133,6 +134,7 @@ func printCombined(out io.Writer, s snapshot) {
 
 func printHost(out io.Writer, s snapshot) {
 	fmt.Fprintln(out, "Stead host status")
+	fmt.Fprintln(out, "=================")
 	fmt.Fprintln(out)
 
 	printSystem(out, s)
@@ -142,6 +144,7 @@ func printHost(out io.Writer, s snapshot) {
 
 func printClient(out io.Writer, s snapshot) {
 	fmt.Fprintln(out, "Stead client status")
+	fmt.Fprintln(out, "===================")
 	fmt.Fprintln(out)
 
 	printSystem(out, s)
@@ -150,37 +153,37 @@ func printClient(out io.Writer, s snapshot) {
 }
 
 func printSystem(out io.Writer, s snapshot) {
-	fmt.Fprintf(out, "System\n")
-	fmt.Fprintf(out, "  OS: %s\n", value(s.OS))
-	fmt.Fprintf(out, "  Arch: %s\n", value(s.Arch))
-	fmt.Fprintf(out, "  User: %s\n", value(s.User))
-	fmt.Fprintf(out, "  Home: %s\n", value(s.Home))
+	printSection(out, "System")
+	printValue(out, "OS", value(s.OS))
+	printValue(out, "Arch", value(s.Arch))
+	printValue(out, "User", value(s.User))
+	printValue(out, "Home", value(s.Home))
 	fmt.Fprintln(out)
 }
 
 func printHostSections(out io.Writer, s snapshot) {
-	fmt.Fprintf(out, "OpenSSH\n")
+	printSection(out, "OpenSSH")
 	printCheck(out, "sshd server", s.SSHDPath)
 	printCheck(out, "sshd_config", s.HostSSHConfig)
 	printCheck(out, "sshd_config.d", s.SSHDConfigD)
 	printCheck(out, "launchd sshd", s.LaunchdSSHD)
 	printCheck(out, "Remote Login", s.RemoteLogin)
 	printCheck(out, "active config lines", s.SSHDActiveLines)
-	fmt.Fprintf(out, "  Host-capable: %s\n", yesNo(s.DefaultHostLike))
+	printValue(out, "Host-capable", yesNo(s.DefaultHostLike))
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "User SSH\n")
+	printSection(out, "User SSH")
 	printCheck(out, "~/.ssh", s.UserSSHDir)
 	printCheck(out, "~/.ssh/config", s.UserSSHConfig)
 	printCheck(out, "~/.ssh/authorized_keys", s.AuthorizedKeys)
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "Session\n")
+	printSection(out, "Session")
 	printCheck(out, "tmux", s.Tmux)
 	printCheck(out, "tmux auto-attach", s.TmuxAutoAttach)
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "Host hardening\n")
+	printSection(out, "Host hardening")
 	for _, finding := range s.Hardening {
 		printFinding(out, finding)
 	}
@@ -188,40 +191,40 @@ func printHostSections(out io.Writer, s snapshot) {
 }
 
 func printClientSections(out io.Writer, s snapshot) {
-	fmt.Fprintf(out, "OpenSSH client\n")
+	printSection(out, "OpenSSH client")
 	printCheck(out, "ssh client", s.SSHPath)
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "Tailscale network metadata\n")
+	printSection(out, "Tailscale network metadata")
 	printCheck(out, "tailscale CLI", s.TailscalePath)
 	printCheck(out, "Tailscale.app", s.TailscaleApp)
 	printCheck(out, "tailscale IP", s.TailscaleIP)
-	fmt.Fprintf(out, "  Tailscale SSH: unmanaged by stead\n")
+	printValue(out, "Tailscale SSH", "unmanaged by stead")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "Client SSH config\n")
+	printSection(out, "Client SSH config")
 	printCheck(out, "~/.ssh/config", s.UserSSHConfig)
 	if s.ClientConfigNote != "" {
-		fmt.Fprintf(out, "  Note: %s\n", s.ClientConfigNote)
+		printValue(out, "Note", s.ClientConfigNote)
 	}
 	for _, alias := range s.ClientAliases {
 		detail := alias.State
 		if len(alias.Findings) > 0 {
 			detail += " (" + strings.Join(alias.Findings, ", ") + ")"
 		}
-		fmt.Fprintf(out, "  Alias %s: %s\n", alias.Alias, colorStatePrefix(out, detail, alias.State))
+		printValue(out, "Alias "+alias.Alias, colorStatePrefix(out, detail, alias.State))
 		if alias.State != "missing" {
 			if alias.Host.HostName != "" {
-				fmt.Fprintf(out, "    HostName: %s\n", alias.Host.HostName)
+				printSubValue(out, "HostName", alias.Host.HostName)
 			}
 			if alias.Host.User != "" {
-				fmt.Fprintf(out, "    User: %s\n", alias.Host.User)
+				printSubValue(out, "User", alias.Host.User)
 			}
 			if alias.Host.Port != "" {
-				fmt.Fprintf(out, "    Port: %s\n", alias.Host.Port)
+				printSubValue(out, "Port", alias.Host.Port)
 			}
 			if alias.Host.IdentityFile != "" {
-				fmt.Fprintf(out, "    IdentityFile: %s\n", alias.Host.IdentityFile)
+				printSubValue(out, "IdentityFile", alias.Host.IdentityFile)
 			}
 		}
 	}
@@ -229,41 +232,58 @@ func printClientSections(out io.Writer, s snapshot) {
 }
 
 func printStead(out io.Writer, s snapshot) {
-	fmt.Fprintf(out, "Stead\n")
-	fmt.Fprintf(out, "  Config path: %s\n", s.ConfigPath)
+	printSection(out, "Stead")
+	printValue(out, "Config path", s.ConfigPath)
 	printCheck(out, "Config", s.Config)
 	if s.Config.State == "ok" {
-		fmt.Fprintf(out, "  Default alias: %s\n", value(s.ConfigAlias))
+		printValue(out, "Default alias", value(s.ConfigAlias))
 		if len(s.ConfigHosts) == 0 {
-			fmt.Fprintf(out, "  Configured hosts: none\n")
+			printValue(out, "Configured hosts", "none")
 		} else {
-			fmt.Fprintf(out, "  Configured hosts:\n")
+			printValue(out, "Configured hosts", "")
 			for _, host := range s.ConfigHosts {
 				detail := host.State
 				if len(host.Findings) > 0 {
 					detail += " (" + strings.Join(host.Findings, ", ") + ")"
 				}
-				fmt.Fprintf(out, "    %s: %s\n", host.Alias, colorStatePrefix(out, detail, host.State))
+				printSubValue(out, host.Alias, colorStatePrefix(out, detail, host.State))
 			}
 		}
 	}
-	fmt.Fprintf(out, "  Mode: read-only status\n")
+	printValue(out, "Mode", "read-only status")
 }
 
 func printCheck(out io.Writer, label string, c check) {
 	if c.Detail == "" {
-		fmt.Fprintf(out, "  %s: %s\n", label, ui.State(out, c.State))
+		printValue(out, label, ui.State(out, c.State))
 		return
 	}
-	fmt.Fprintf(out, "  %s: %s (%s)\n", label, ui.State(out, c.State), c.Detail)
+	printValue(out, label, fmt.Sprintf("%s (%s)", ui.State(out, c.State), c.Detail))
 }
 
 func printFinding(out io.Writer, f finding) {
 	if f.Detail == "" {
-		fmt.Fprintf(out, "  %s: %s\n", f.Label, ui.State(out, f.State))
+		printValue(out, f.Label, ui.State(out, f.State))
 		return
 	}
-	fmt.Fprintf(out, "  %s: %s (%s)\n", f.Label, ui.State(out, f.State), f.Detail)
+	printValue(out, f.Label, fmt.Sprintf("%s (%s)", ui.State(out, f.State), f.Detail))
+}
+
+func printSection(out io.Writer, title string) {
+	fmt.Fprintln(out, title)
+	fmt.Fprintln(out, strings.Repeat("-", len(title)))
+}
+
+func printValue(out io.Writer, label, value string) {
+	if value == "" {
+		fmt.Fprintf(out, "  %s:\n", label)
+		return
+	}
+	fmt.Fprintf(out, "  %-30s %s\n", label+":", value)
+}
+
+func printSubValue(out io.Writer, label, value string) {
+	fmt.Fprintf(out, "    %-28s %s\n", label+":", value)
 }
 
 func colorStatePrefix(out io.Writer, detail, state string) string {

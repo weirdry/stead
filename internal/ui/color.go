@@ -23,6 +23,9 @@ func ColorEnabled(out io.Writer) bool {
 	if colorDisabled {
 		return false
 	}
+	if os.Getenv("TERM") == "dumb" {
+		return false
+	}
 	if os.Getenv("NO_COLOR") != "" {
 		return false
 	}
