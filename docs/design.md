@@ -335,7 +335,7 @@ It should not delete user private keys by default. It may remove managed referen
 Private/local install is preferred:
 
 ```bash
-git clone <private-repo> ~/src/stead
+git clone https://github.com/weirdry/stead.git ~/src/stead
 cd ~/src/stead
 ./install.sh
 ```
@@ -347,7 +347,21 @@ Install targets:
 ~/.config/stead/config.toml
 ```
 
+`./install.sh` builds the local checkout and copies the binary to `~/.local/bin/stead` by default. It must not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
+
 No Homebrew formula or public package registry is required.
+
+Preview:
+
+```bash
+./install.sh --dry-run
+```
+
+If needed, users can choose a different binary target:
+
+```bash
+STEAD_INSTALL_DIR="$HOME/bin" ./install.sh
+```
 
 Updates:
 
@@ -360,10 +374,11 @@ git pull
 Uninstall:
 
 ```bash
-stead client uninstall
-stead host uninstall
+./uninstall.sh --dry-run
 ./uninstall.sh
 ```
+
+`./uninstall.sh` removes only the installed binary. It must leave `~/.config/stead/config.toml`, generated SSH keys, managed SSH config blocks, and `authorized_keys` entries alone. Those are handled by explicit stead commands such as `stead client unapply` and `stead host unauthorize`.
 
 ## Recommended Implementation
 

@@ -103,7 +103,7 @@ stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac
 The intended distribution model is private/local:
 
 ```bash
-git clone <private-repo> ~/src/stead
+git clone https://github.com/weirdry/stead.git ~/src/stead
 cd ~/src/stead
 ./install.sh
 ```
@@ -114,12 +114,35 @@ The preferred binary target is:
 ~/.local/bin/stead
 ```
 
+`./install.sh` builds the local checkout and copies the binary to the target. It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
+
+Preview the install:
+
+```bash
+./install.sh --dry-run
+```
+
+If `~/.local/bin` is not on `PATH`, add it to your shell profile so `stead` works outside the repo:
+
+```zsh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Uninstall only the installed binary:
+
+```bash
+./uninstall.sh --dry-run
+./uninstall.sh
+```
+
 ## Development
 
 This repo uses `just`.
 
 ```bash
 just
+just install-dry-run
+just install
 just check
 ```
 
