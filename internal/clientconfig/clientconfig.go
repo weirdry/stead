@@ -48,21 +48,22 @@ func WriteDryRun(out io.Writer, cfg *config.Config, cfgPath, sshConfigPath, alia
 	fmt.Fprintf(out, "Config: %s\n", cfgPath)
 	fmt.Fprintf(out, "SSH config: %s\n", sshConfigPath)
 	fmt.Fprintf(out, "Alias: %s\n", alias)
-	fmt.Fprintln(out, "Mode: dry-run")
+	fmt.Fprintln(out, "Mode: dry-run (no files changed)")
 	if hasInclude(existing) {
 		fmt.Fprintln(out, "Note: Include directive present; included files are not expanded")
 	}
 	fmt.Fprintln(out)
 
+	fmt.Fprintln(out, "Changes")
 	switch change.State {
 	case "add":
-		fmt.Fprintln(out, "Action: would add managed SSH config block")
+		fmt.Fprintln(out, "  Action: would add managed SSH config block")
 	case "replace":
-		fmt.Fprintln(out, "Action: would replace existing managed SSH config block")
+		fmt.Fprintln(out, "  Action: would replace existing managed SSH config block")
 	case "unchanged":
-		fmt.Fprintln(out, "Action: no changes needed")
+		fmt.Fprintln(out, "  Action: no changes needed")
 	default:
-		fmt.Fprintf(out, "Action: %s\n", change.State)
+		fmt.Fprintf(out, "  Action: %s\n", change.State)
 	}
 	fmt.Fprintln(out)
 
@@ -70,6 +71,13 @@ func WriteDryRun(out io.Writer, cfg *config.Config, cfgPath, sshConfigPath, alia
 	fmt.Fprint(out, indent(change.Block, "  "))
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "No files were modified.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Next steps")
+	if change.State == "unchanged" {
+		fmt.Fprintf(out, "  1. stead setup --alias %s --dry-run --verify\n", alias)
+	} else {
+		fmt.Fprintf(out, "  1. stead client apply --alias %s\n", alias)
+	}
 	return nil
 }
 
@@ -108,9 +116,13 @@ func WriteApply(out io.Writer, cfg *config.Config, cfgPath, sshConfigPath, alias
 	fmt.Fprintln(out)
 
 	if change.State == "unchanged" {
-		fmt.Fprintln(out, "Action: no changes needed")
-		fmt.Fprintln(out, "Backup: not created")
+		fmt.Fprintln(out, "Changes")
+		fmt.Fprintln(out, "  Action: no changes needed")
+		fmt.Fprintln(out, "  Backup: not created")
 		fmt.Fprintln(out, "No files were modified.")
+		fmt.Fprintln(out)
+		fmt.Fprintln(out, "Next steps")
+		fmt.Fprintf(out, "  1. stead setup --alias %s --dry-run --verify\n", alias)
 		return nil
 	}
 
@@ -130,23 +142,27 @@ func WriteApply(out io.Writer, cfg *config.Config, cfgPath, sshConfigPath, alias
 		return err
 	}
 
+	fmt.Fprintln(out, "Changes")
 	switch change.State {
 	case "add":
-		fmt.Fprintln(out, "Action: added managed SSH config block")
+		fmt.Fprintln(out, "  Action: added managed SSH config block")
 	case "replace":
-		fmt.Fprintln(out, "Action: replaced existing managed SSH config block")
+		fmt.Fprintln(out, "  Action: replaced existing managed SSH config block")
 	default:
-		fmt.Fprintf(out, "Action: %s\n", change.State)
+		fmt.Fprintf(out, "  Action: %s\n", change.State)
 	}
 	if backupPath != "" {
-		fmt.Fprintf(out, "Backup: %s\n", backupPath)
+		fmt.Fprintf(out, "  Backup: %s\n", backupPath)
 	} else {
-		fmt.Fprintln(out, "Backup: not created (SSH config did not exist)")
+		fmt.Fprintln(out, "  Backup: not created (SSH config did not exist)")
 	}
 	fmt.Fprintln(out)
 
 	fmt.Fprintln(out, "Managed block")
 	fmt.Fprint(out, indent(change.Block, "  "))
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Next steps")
+	fmt.Fprintf(out, "  1. stead setup --alias %s --dry-run --verify\n", alias)
 	return nil
 }
 
@@ -169,7 +185,7 @@ func WriteUnapply(out io.Writer, sshConfigPath, alias string, dryRun bool) error
 	fmt.Fprintf(out, "SSH config: %s\n", sshConfigPath)
 	fmt.Fprintf(out, "Alias: %s\n", alias)
 	if dryRun {
-		fmt.Fprintln(out, "Mode: dry-run")
+		fmt.Fprintln(out, "Mode: dry-run (no files changed)")
 	} else {
 		fmt.Fprintln(out, "Mode: apply")
 	}
@@ -179,18 +195,20 @@ func WriteUnapply(out io.Writer, sshConfigPath, alias string, dryRun bool) error
 	fmt.Fprintln(out)
 
 	if dryRun {
+		fmt.Fprintln(out, "Changes")
 		switch change.State {
 		case "remove":
-			fmt.Fprintln(out, "Action: would remove managed SSH config block")
+			fmt.Fprintln(out, "  Action: would remove managed SSH config block")
 		case "absent":
-			fmt.Fprintln(out, "Action: no changes needed")
+			fmt.Fprintln(out, "  Action: no changes needed")
 		}
 		fmt.Fprintln(out, "No files were modified.")
 		return nil
 	}
 
 	if change.State == "absent" {
-		fmt.Fprintln(out, "Action: no changes needed")
+		fmt.Fprintln(out, "Changes")
+		fmt.Fprintln(out, "  Action: no changes needed")
 		fmt.Fprintln(out, "No files were modified.")
 		return nil
 	}
@@ -206,8 +224,9 @@ func WriteUnapply(out io.Writer, sshConfigPath, alias string, dryRun bool) error
 		return err
 	}
 
-	fmt.Fprintln(out, "Action: removed managed SSH config block")
-	fmt.Fprintf(out, "Backup: %s\n", backupPath)
+	fmt.Fprintln(out, "Changes")
+	fmt.Fprintln(out, "  Action: removed managed SSH config block")
+	fmt.Fprintf(out, "  Backup: %s\n", backupPath)
 	return nil
 }
 
