@@ -79,6 +79,7 @@ If Tailscale SSH is detected, `stead` should report it as external and unmanaged
 ```bash
 stead status
 stead setup --alias devmac --dry-run
+stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
 stead config path
 stead config show
@@ -210,6 +211,8 @@ stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac
 `client unapply` removes only the matching managed SSH config marker block. `host unauthorize` removes only matching public key material, regardless of comment.
 
 `stead verify --alias devmac` should run a non-interactive SSH check such as `ssh -o BatchMode=yes devmac true`. It verifies that key-based login works without opening an interactive session or falling back to password prompts.
+
+`stead setup --verify` should include that non-interactive SSH check in the setup plan. When verification succeeds, the plan can treat host authorization as proven and suggest `ssh <alias>` instead of repeating the host authorization handoff.
 
 Example generated SSH config:
 

@@ -2,6 +2,8 @@ package setup
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +67,71 @@ func TestWritePlanCompleteClientSetup(t *testing.T) {
 	}
 	if !strings.Contains(out, keyPath) {
 		t.Fatalf("output missing key path %q:\n%s", keyPath, out)
+	}
+}
+
+func TestWritePlanVerifyOKSuppressesHostAuthorizeSteps(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath, sshConfigPath, _ := writeCompleteFixture(t, dir)
+	var buf bytes.Buffer
+
+	if err := WritePlan(Options{
+		Alias:         "devmac",
+		ConfigPath:    cfgPath,
+		SSHConfigPath: sshConfigPath,
+		Verify:        true,
+		Out:           &buf,
+		VerifyRunner: func(ctx context.Context, alias string) error {
+			if alias != "devmac" {
+				t.Fatalf("alias = %q", alias)
+			}
+			return nil
+		},
+	}); err != nil {
+		t.Fatalf("WritePlan returned error: %v", err)
+	}
+
+	out := buf.String()
+	for _, want := range []string{
+		"SSH login: ok",
+		"ssh devmac",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "stead host authorize") {
+		t.Fatalf("verified setup should not suggest host authorize:\n%s", out)
+	}
+}
+
+func TestWritePlanVerifyFailureKeepsHostAuthorizeSteps(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath, sshConfigPath, _ := writeCompleteFixture(t, dir)
+	var buf bytes.Buffer
+
+	if err := WritePlan(Options{
+		Alias:         "devmac",
+		ConfigPath:    cfgPath,
+		SSHConfigPath: sshConfigPath,
+		Verify:        true,
+		Out:           &buf,
+		VerifyRunner: func(ctx context.Context, alias string) error {
+			return errors.New("ssh failed")
+		},
+	}); err != nil {
+		t.Fatalf("WritePlan returned error: %v", err)
+	}
+
+	out := buf.String()
+	for _, want := range []string{
+		"SSH login: failed",
+		"stead host authorize --alias devmac",
+		"stead verify --alias devmac",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
 	}
 }
 

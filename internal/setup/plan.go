@@ -1,21 +1,26 @@
 package setup
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/sshconfig"
+	"github.com/ed/stead/internal/verify"
 )
 
 type Options struct {
 	Alias         string
 	ConfigPath    string
 	SSHConfigPath string
+	Verify        bool
+	VerifyRunner  verify.Runner
 	Out           io.Writer
 }
 
@@ -109,9 +114,24 @@ func WritePlan(opts Options) error {
 	fmt.Fprintln(out)
 
 	fmt.Fprintln(out, "Host authorization")
+	verified := false
+	verifyFailed := false
+	if opts.Verify && aliasState.Host == "ok" {
+		ok, err := verifyAlias(alias, opts.VerifyRunner)
+		if err != nil {
+			return err
+		}
+		verified = ok
+		verifyFailed = !ok
+	}
 	if publicKey == "" {
 		fmt.Fprintln(out, "  Public key handoff: pending until public key exists")
+	} else if verified {
+		fmt.Fprintln(out, "  SSH login: ok")
 	} else {
+		if opts.Verify && verifyFailed {
+			fmt.Fprintln(out, "  SSH login: failed")
+		}
 		fmt.Fprintln(out, "  Public key handoff: run on the host if not already authorized")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey)+" --dry-run")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey))
@@ -130,6 +150,22 @@ func WritePlan(opts Options) error {
 		fmt.Fprintf(out, "  %s\n", step)
 	}
 	return nil
+}
+
+func verifyAlias(alias string, runner verify.Runner) (bool, error) {
+	if runner == nil {
+		runner = verify.SSHRunner
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := runner(ctx, alias)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return false, nil
+	}
+	return false, nil
 }
 
 type aliasState struct {

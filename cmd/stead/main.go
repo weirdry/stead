@@ -54,6 +54,7 @@ func run(args []string) error {
 func runSetup(args []string) error {
 	alias := ""
 	dryRun := false
+	verifyLogin := false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--alias":
@@ -64,6 +65,8 @@ func runSetup(args []string) error {
 			i++
 		case "--dry-run":
 			dryRun = true
+		case "--verify":
+			verifyLogin = true
 		default:
 			printUsage(os.Stderr)
 			return fmt.Errorf("unknown setup option %q", args[i])
@@ -72,7 +75,7 @@ func runSetup(args []string) error {
 	if !dryRun {
 		return fmt.Errorf("setup currently requires --dry-run")
 	}
-	return setup.WritePlan(setup.Options{Alias: alias, Out: os.Stdout})
+	return setup.WritePlan(setup.Options{Alias: alias, Verify: verifyLogin, Out: os.Stdout})
 }
 
 func runVerify(args []string) error {
@@ -375,7 +378,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  stead status")
-	fmt.Fprintln(out, "  stead setup --alias name --dry-run")
+	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead host status")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
