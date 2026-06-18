@@ -19,16 +19,22 @@ func TestWriteClientUsesConfiguredAlias(t *testing.T) {
 
 	for _, want := range []string{
 		"Stead client plan",
-		"Alias: devmac",
+		"Alias:",
+		"devmac",
 		"Host devmac",
 		"HostName devmac.tailnet.example",
 		"User ed",
 		"Port 22",
 		"IdentityFile ~/.ssh/stead_ed25519",
-		"Tailscale SSH: not used",
-		"Behavior: send Wake-on-LAN, wait for SSH port, then exec system ssh",
-		"tmux: enabled (main)",
-		"Readiness\n  ok",
+		"Tailscale SSH:",
+		"not used",
+		"Behavior:",
+		"send Wake-on-LAN, wait for SSH port, then exec system ssh",
+		"tmux:",
+		"enabled (main)",
+		"Readiness",
+		"Status:",
+		"ok",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
@@ -43,7 +49,7 @@ func TestWriteClientUsesDefaultAlias(t *testing.T) {
 	if err := WriteClient(&buf, cfg, "/tmp/config.toml", ""); err != nil {
 		t.Fatalf("WriteClient returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "Alias: devmac") {
+	if !strings.Contains(buf.String(), "Alias:") || !strings.Contains(buf.String(), "devmac") {
 		t.Fatalf("output did not use default alias:\n%s", buf.String())
 	}
 }
@@ -71,10 +77,10 @@ func TestWriteClientTreatsWakePlaceholdersAsNotes(t *testing.T) {
 		t.Fatalf("WriteClient returned error: %v", err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "Readiness\n  ok") {
+	if !strings.Contains(out, "Readiness") || !strings.Contains(out, "Status:") || !strings.Contains(out, "ok") {
 		t.Fatalf("wake placeholders should not block readiness:\n%s", out)
 	}
-	if !strings.Contains(out, "Notes\n  wake MAC placeholder; wake flow is not ready") {
+	if !strings.Contains(out, "Notes") || !strings.Contains(out, "wake MAC placeholder; wake flow is not ready") {
 		t.Fatalf("wake placeholder note missing:\n%s", out)
 	}
 }

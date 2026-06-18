@@ -45,43 +45,43 @@ func WritePlan(opts Options) error {
 		return err
 	}
 
-	fmt.Fprintln(out, "Stead setup")
+	ui.PrintTitle(out, "Stead setup")
 	fmt.Fprintln(out)
-	fmt.Fprintf(out, "Alias: %s\n", alias)
-	fmt.Fprintln(out, "Mode: dry-run (no files changed)")
-	fmt.Fprintln(out, "SSH: normal OpenSSH; Tailscale SSH is not used")
+	ui.PrintKV(out, "Alias", alias)
+	ui.PrintKV(out, "Mode", "dry-run (no files changed)")
+	ui.PrintKV(out, "SSH", "normal OpenSSH; Tailscale SSH is not used")
 	fmt.Fprintln(out)
 
 	steps := make([]string, 0)
 
-	fmt.Fprintln(out, "Client config")
+	ui.PrintSection(out, "Client config")
 	var host *config.Host
 	if cfgErr != nil {
 		if errors.Is(cfgErr, os.ErrNotExist) {
-			fmt.Fprintf(out, "  Config: %s (%s)\n", ui.State(out, "missing"), cfgPath)
+			ui.PrintKV(out, "Config", ui.StateDetail(out, "missing", cfgPath))
 			steps = append(steps, "stead client init --alias "+alias+" --discover tailscale --yes")
 		} else {
 			return cfgErr
 		}
 	} else {
-		fmt.Fprintf(out, "  Config: %s (%s)\n", ui.State(out, "ok"), cfgPath)
+		ui.PrintKV(out, "Config", ui.StateDetail(out, "ok", cfgPath))
 		host = cfg.Hosts[alias]
 		if host == nil {
-			fmt.Fprintf(out, "  Host: %s\n", ui.State(out, "missing"))
+			ui.PrintKV(out, "Host", ui.State(out, "missing"))
 			steps = append(steps, "stead client init --alias "+alias+" --discover tailscale --yes")
 		} else {
-			fmt.Fprintf(out, "  Host: %s\n", ui.State(out, "ok"))
-			fmt.Fprintf(out, "  Hostname: %s\n", valueOrUnset(host.Hostname))
-			fmt.Fprintf(out, "  User: %s\n", valueOrUnset(host.User))
-			fmt.Fprintf(out, "  IdentityFile: %s\n", valueOrUnset(host.IdentityFile))
+			ui.PrintKV(out, "Host", ui.State(out, "ok"))
+			ui.PrintKV(out, "Hostname", valueOrUnset(host.Hostname))
+			ui.PrintKV(out, "User", valueOrUnset(host.User))
+			ui.PrintKV(out, "IdentityFile", valueOrUnset(host.IdentityFile))
 		}
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Client key")
+	ui.PrintSection(out, "Client key")
 	publicKey := ""
 	if host == nil || host.IdentityFile == "" {
-		fmt.Fprintln(out, "  Key: unknown until client init")
+		ui.PrintKV(out, "Key", "unknown until client init")
 	} else {
 		keyPath, err := expandHome(host.IdentityFile)
 		if err != nil {
@@ -89,33 +89,33 @@ func WritePlan(opts Options) error {
 		}
 		pubPath := keyPath + ".pub"
 		if fileExists(keyPath) {
-			fmt.Fprintf(out, "  Private key: %s (%s)\n", ui.State(out, "ok"), host.IdentityFile)
+			ui.PrintKV(out, "Private key", ui.StateDetail(out, "ok", host.IdentityFile))
 		} else {
-			fmt.Fprintf(out, "  Private key: %s (%s)\n", ui.State(out, "missing"), host.IdentityFile)
+			ui.PrintKV(out, "Private key", ui.StateDetail(out, "missing", host.IdentityFile))
 			steps = append(steps, clientInitStep(alias, host.Hostname))
 		}
 		if data, err := os.ReadFile(pubPath); err == nil {
 			publicKey = strings.TrimSpace(string(data))
-			fmt.Fprintf(out, "  Public key: %s (%s.pub)\n", ui.State(out, "ok"), host.IdentityFile)
+			ui.PrintKV(out, "Public key", ui.StateDetail(out, "ok", host.IdentityFile+".pub"))
 		} else if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(out, "  Public key: %s (%s.pub)\n", ui.State(out, "missing"), host.IdentityFile)
+			ui.PrintKV(out, "Public key", ui.StateDetail(out, "missing", host.IdentityFile+".pub"))
 		} else {
 			return err
 		}
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "SSH alias")
+	ui.PrintSection(out, "SSH alias")
 	aliasState := sshAliasState(sshConfigPath, alias)
-	fmt.Fprintf(out, "  ~/.ssh/config: %s\n", colorStatePrefix(out, aliasState.Config, statePrefix(aliasState.Config)))
-	fmt.Fprintf(out, "  Host %s: %s\n", alias, colorStatePrefix(out, aliasState.Host, statePrefix(aliasState.Host)))
+	ui.PrintKV(out, "~/.ssh/config", colorStatePrefix(out, aliasState.Config, statePrefix(aliasState.Config)))
+	ui.PrintKV(out, "Host "+alias, colorStatePrefix(out, aliasState.Host, statePrefix(aliasState.Host)))
 	if aliasState.Host != "ok" {
 		steps = append(steps, "stead client apply --dry-run --alias "+alias)
 		steps = append(steps, "stead client apply --alias "+alias)
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Host authorization")
+	ui.PrintSection(out, "Host authorization")
 	verified := false
 	verifyFailed := false
 	if opts.Verify && aliasState.Host == "ok" {
@@ -127,14 +127,14 @@ func WritePlan(opts Options) error {
 		verifyFailed = !ok
 	}
 	if publicKey == "" {
-		fmt.Fprintln(out, "  Public key handoff: pending until public key exists")
+		ui.PrintKV(out, "Public key handoff", "pending until public key exists")
 	} else if verified {
-		fmt.Fprintf(out, "  SSH login: %s\n", ui.State(out, "ok"))
+		ui.PrintKV(out, "SSH login", ui.State(out, "ok"))
 	} else {
 		if opts.Verify && verifyFailed {
-			fmt.Fprintf(out, "  SSH login: %s\n", ui.State(out, "failed"))
+			ui.PrintKV(out, "SSH login", ui.State(out, "failed"))
 		}
-		fmt.Fprintln(out, "  Public key handoff: run on the host if not already authorized")
+		ui.PrintKV(out, "Public key handoff", "run on the host if not already authorized")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey)+" --dry-run")
 		steps = append(steps, "stead host authorize --alias "+alias+" --public-key "+shellQuote(publicKey))
 		if aliasState.Host == "ok" {
@@ -143,15 +143,15 @@ func WritePlan(opts Options) error {
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Next steps")
+	ui.PrintSection(out, "Next steps")
 	if len(steps) == 0 {
-		fmt.Fprintln(out, "  Ready")
-		fmt.Fprintf(out, "  1. ssh %s\n", alias)
+		ui.PrintKV(out, "Status", "ready")
+		ui.PrintStep(out, 1, "ssh "+alias)
 		return nil
 	}
-	fmt.Fprintln(out, "  Run in order")
+	ui.PrintKV(out, "Order", "run in order")
 	for i, step := range unique(steps) {
-		fmt.Fprintf(out, "  %d. %s\n", i+1, step)
+		ui.PrintStep(out, i+1, step)
 	}
 	return nil
 }

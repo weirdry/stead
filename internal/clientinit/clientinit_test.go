@@ -38,9 +38,12 @@ func TestRunDryRunDoesNotWriteFiles(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"Mode: dry-run",
-		"Config action: would create config",
-		"Key action: would generate Ed25519 key",
+		"Mode:",
+		"dry-run",
+		"Config action:",
+		"would create config",
+		"Key action:",
+		"would generate Ed25519 key",
 		"No files were modified.",
 	} {
 		if !strings.Contains(out, want) {
@@ -118,7 +121,7 @@ func TestRunUsesPromptedHostname(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "Hostname: devmac.tailnet.example") {
+	if !strings.Contains(buf.String(), "Hostname:") || !strings.Contains(buf.String(), "devmac.tailnet.example") {
 		t.Fatalf("output missing prompted hostname:\n%s", buf.String())
 	}
 }
@@ -172,8 +175,10 @@ func TestRunDiscoversTailscaleHostname(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"Hostname: devmac.tailnet.example",
-		"Discovered via Tailscale: devmac ts-ip",
+		"Hostname:",
+		"devmac.tailnet.example",
+		"Discovered via Tailscale:",
+		"devmac ts-ip",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)

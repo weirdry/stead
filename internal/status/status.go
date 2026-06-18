@@ -267,27 +267,19 @@ func printFinding(out io.Writer, f finding) {
 }
 
 func printTitle(out io.Writer, title string) {
-	fmt.Fprintln(out, ui.Title(out, title))
-	fmt.Fprintln(out, ui.Rule(out, strings.Repeat("=", len(title))))
+	ui.PrintTitle(out, title)
 }
 
 func printSection(out io.Writer, title string) {
-	fmt.Fprintln(out, ui.Section(out, title))
-	fmt.Fprintln(out, ui.Rule(out, strings.Repeat("-", len(title))))
+	ui.PrintSection(out, title)
 }
 
 func printValue(out io.Writer, label, value string) {
-	if value == "" {
-		fmt.Fprintf(out, "  %s\n", ui.Label(out, label+":"))
-		return
-	}
-	padded := fmt.Sprintf("%-30s", label+":")
-	fmt.Fprintf(out, "  %s %s\n", ui.Label(out, padded), value)
+	ui.PrintKV(out, label, value)
 }
 
 func printSubValue(out io.Writer, label, value string) {
-	padded := fmt.Sprintf("%-28s", label+":")
-	fmt.Fprintf(out, "    %s %s\n", ui.Label(out, padded), value)
+	ui.PrintSubKV(out, label, value)
 }
 
 func colorStatePrefix(out io.Writer, detail, state string) string {
@@ -299,7 +291,7 @@ func colorStatePrefix(out io.Writer, detail, state string) string {
 }
 
 func stateWithDetail(out io.Writer, state, detail string) string {
-	return fmt.Sprintf("%s %s", ui.State(out, state), ui.Detail(out, "("+detail+")"))
+	return ui.StateDetail(out, state, detail)
 }
 
 func lookPath(name string) check {

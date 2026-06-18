@@ -28,8 +28,10 @@ func TestWritePlanMissingConfig(t *testing.T) {
 	out := buf.String()
 	for _, want := range []string{
 		"Stead setup",
-		"Alias: devmac",
-		"Config: missing",
+		"Alias:",
+		"devmac",
+		"Config:",
+		"missing",
 		"stead client init --alias devmac --discover tailscale --yes",
 	} {
 		if !strings.Contains(out, want) {
@@ -54,10 +56,11 @@ func TestWritePlanCompleteClientSetup(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"Config: ok",
-		"Private key: ok",
-		"Public key: ok",
-		"Host devmac: ok",
+		"Config:",
+		"Private key:",
+		"Public key:",
+		"Host devmac:",
+		"ok",
 		"stead host authorize --alias devmac --public-key 'ssh-ed25519 test-public-key stead devmac' --dry-run",
 		"stead verify --alias devmac",
 	} {
@@ -93,7 +96,8 @@ func TestWritePlanVerifyOKSuppressesHostAuthorizeSteps(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"SSH login: ok",
+		"SSH login:",
+		"ok",
 		"ssh devmac",
 	} {
 		if !strings.Contains(out, want) {
@@ -125,7 +129,8 @@ func TestWritePlanVerifyFailureKeepsHostAuthorizeSteps(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"SSH login: failed",
+		"SSH login:",
+		"failed",
 		"stead host authorize --alias devmac",
 		"stead verify --alias devmac",
 	} {
@@ -154,7 +159,8 @@ func TestWritePlanMissingSSHAlias(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"Host devmac: missing",
+		"Host devmac:",
+		"missing",
 		"stead client apply --dry-run --alias devmac",
 		"stead client apply --alias devmac",
 	} {

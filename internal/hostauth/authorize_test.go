@@ -27,8 +27,10 @@ func TestRunDryRunDoesNotWrite(t *testing.T) {
 		t.Fatalf("dry-run wrote authorized_keys: %v", err)
 	}
 	for _, want := range []string{
-		"Mode: dry-run",
-		"Action: would add public key",
+		"Mode:",
+		"dry-run",
+		"Action:",
+		"would add public key",
 		"No files were modified.",
 	} {
 		if !strings.Contains(buf.String(), want) {
@@ -60,7 +62,7 @@ func TestRunAddsPublicKey(t *testing.T) {
 	}
 	assertMode(t, filepath.Dir(path), 0o700)
 	assertMode(t, path, 0o600)
-	if !strings.Contains(buf.String(), "Action: added public key") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "added public key") {
 		t.Fatalf("output missing add action:\n%s", buf.String())
 	}
 }
@@ -93,7 +95,7 @@ func TestRunDetectsExistingPublicKey(t *testing.T) {
 	if string(data) != line+"\n" {
 		t.Fatalf("authorized_keys changed:\n%s", string(data))
 	}
-	if !strings.Contains(buf.String(), "Action: no changes needed") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "no changes needed") {
 		t.Fatalf("output missing no-op action:\n%s", buf.String())
 	}
 }
@@ -126,7 +128,7 @@ func TestRunDetectsExistingPublicKeyWithDifferentComment(t *testing.T) {
 	if string(data) != existing+"\n" {
 		t.Fatalf("authorized_keys changed:\n%s", string(data))
 	}
-	if !strings.Contains(buf.String(), "Action: no changes needed") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "no changes needed") {
 		t.Fatalf("output missing no-op action:\n%s", buf.String())
 	}
 }
@@ -180,7 +182,7 @@ func TestRunUnauthorizeDryRunDoesNotWrite(t *testing.T) {
 	if string(data) != original {
 		t.Fatalf("dry-run modified authorized_keys:\n%s", string(data))
 	}
-	if !strings.Contains(buf.String(), "Action: would remove public key") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "would remove public key") {
 		t.Fatalf("output missing remove action:\n%s", buf.String())
 	}
 }
@@ -217,7 +219,7 @@ func TestRunUnauthorizeRemovesPublicKey(t *testing.T) {
 		t.Fatalf("unrelated key not preserved:\n%s", string(data))
 	}
 	assertMode(t, path, 0o600)
-	if !strings.Contains(buf.String(), "Action: removed public key") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "removed public key") {
 		t.Fatalf("output missing removed action:\n%s", buf.String())
 	}
 }
@@ -248,7 +250,7 @@ func TestRunUnauthorizeAbsentNoOps(t *testing.T) {
 	if string(data) != original {
 		t.Fatalf("absent unauthorize modified authorized_keys:\n%s", string(data))
 	}
-	if !strings.Contains(buf.String(), "Action: no changes needed") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "no changes needed") {
 		t.Fatalf("output missing no-op action:\n%s", buf.String())
 	}
 }

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ed/stead/internal/ui"
 )
 
 type Options struct {
@@ -47,32 +49,36 @@ func Run(opts Options) error {
 	}
 	plan := PlanContent(existing, line)
 
-	fmt.Fprintln(opts.Out, "Stead host authorize")
+	ui.PrintTitle(opts.Out, "Stead host authorize")
 	fmt.Fprintln(opts.Out)
-	fmt.Fprintf(opts.Out, "AuthorizedKeys: %s\n", path)
+	ui.PrintKV(opts.Out, "AuthorizedKeys", path)
 	if opts.Alias != "" {
-		fmt.Fprintf(opts.Out, "Alias: %s\n", opts.Alias)
+		ui.PrintKV(opts.Out, "Alias", opts.Alias)
 	}
 	if opts.DryRun {
-		fmt.Fprintln(opts.Out, "Mode: dry-run")
+		ui.PrintKV(opts.Out, "Mode", "dry-run (no files changed)")
 	} else {
-		fmt.Fprintln(opts.Out, "Mode: apply")
+		ui.PrintKV(opts.Out, "Mode", "apply")
 	}
 	fmt.Fprintln(opts.Out)
 
 	if opts.DryRun {
+		ui.PrintSection(opts.Out, "Changes")
 		switch plan.State {
 		case "present":
-			fmt.Fprintln(opts.Out, "Action: no changes needed")
+			ui.PrintKV(opts.Out, "Action", "no changes needed")
 		case "add":
-			fmt.Fprintln(opts.Out, "Action: would add public key")
+			ui.PrintKV(opts.Out, "Action", "would add public key")
 		}
+		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
 		return nil
 	}
 
 	if plan.State == "present" {
-		fmt.Fprintln(opts.Out, "Action: no changes needed")
+		ui.PrintSection(opts.Out, "Changes")
+		ui.PrintKV(opts.Out, "Action", "no changes needed")
+		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
 		return nil
 	}
@@ -98,7 +104,8 @@ func Run(opts Options) error {
 		return err
 	}
 
-	fmt.Fprintln(opts.Out, "Action: added public key")
+	ui.PrintSection(opts.Out, "Changes")
+	ui.PrintKV(opts.Out, "Action", "added public key")
 	return nil
 }
 
@@ -126,32 +133,36 @@ func RunUnauthorize(opts Options) error {
 	}
 	plan := PlanRemoval(existing, line)
 
-	fmt.Fprintln(opts.Out, "Stead host unauthorize")
+	ui.PrintTitle(opts.Out, "Stead host unauthorize")
 	fmt.Fprintln(opts.Out)
-	fmt.Fprintf(opts.Out, "AuthorizedKeys: %s\n", path)
+	ui.PrintKV(opts.Out, "AuthorizedKeys", path)
 	if opts.Alias != "" {
-		fmt.Fprintf(opts.Out, "Alias: %s\n", opts.Alias)
+		ui.PrintKV(opts.Out, "Alias", opts.Alias)
 	}
 	if opts.DryRun {
-		fmt.Fprintln(opts.Out, "Mode: dry-run")
+		ui.PrintKV(opts.Out, "Mode", "dry-run (no files changed)")
 	} else {
-		fmt.Fprintln(opts.Out, "Mode: apply")
+		ui.PrintKV(opts.Out, "Mode", "apply")
 	}
 	fmt.Fprintln(opts.Out)
 
 	if opts.DryRun {
+		ui.PrintSection(opts.Out, "Changes")
 		switch plan.State {
 		case "remove":
-			fmt.Fprintln(opts.Out, "Action: would remove public key")
+			ui.PrintKV(opts.Out, "Action", "would remove public key")
 		case "absent":
-			fmt.Fprintln(opts.Out, "Action: no changes needed")
+			ui.PrintKV(opts.Out, "Action", "no changes needed")
 		}
+		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
 		return nil
 	}
 
 	if plan.State == "absent" {
-		fmt.Fprintln(opts.Out, "Action: no changes needed")
+		ui.PrintSection(opts.Out, "Changes")
+		ui.PrintKV(opts.Out, "Action", "no changes needed")
+		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
 		return nil
 	}
@@ -165,7 +176,8 @@ func RunUnauthorize(opts Options) error {
 		return err
 	}
 
-	fmt.Fprintln(opts.Out, "Action: removed public key")
+	ui.PrintSection(opts.Out, "Changes")
+	ui.PrintKV(opts.Out, "Action", "removed public key")
 	return nil
 }
 

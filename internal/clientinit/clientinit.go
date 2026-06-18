@@ -13,6 +13,7 @@ import (
 
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/tailscale"
+	"github.com/ed/stead/internal/ui"
 )
 
 type Options struct {
@@ -88,47 +89,47 @@ func Run(opts Options) error {
 	keyExists := fileExists(keyPath)
 	publicKeyPath := keyPath + ".pub"
 
-	fmt.Fprintln(opts.Out, "Stead client init")
+	ui.PrintTitle(opts.Out, "Stead client init")
 	fmt.Fprintln(opts.Out)
-	fmt.Fprintf(opts.Out, "Config: %s\n", path)
-	fmt.Fprintf(opts.Out, "Alias: %s\n", alias)
-	fmt.Fprintf(opts.Out, "Hostname: %s\n", hostname)
+	ui.PrintKV(opts.Out, "Config", path)
+	ui.PrintKV(opts.Out, "Alias", alias)
+	ui.PrintKV(opts.Out, "Hostname", hostname)
 	if discovered.HostName != "" || discovered.IP != "" {
-		fmt.Fprintf(opts.Out, "Discovered via Tailscale: %s %s\n", valueOrUnset(discovered.HostName), valueOrUnset(discovered.IP))
+		ui.PrintKV(opts.Out, "Discovered via Tailscale", valueOrUnset(discovered.HostName)+" "+valueOrUnset(discovered.IP))
 	}
-	fmt.Fprintf(opts.Out, "User: %s\n", localUser)
-	fmt.Fprintf(opts.Out, "IdentityFile: %s\n", identityFile)
+	ui.PrintKV(opts.Out, "User", localUser)
+	ui.PrintKV(opts.Out, "IdentityFile", identityFile)
 	if opts.DryRun {
-		fmt.Fprintln(opts.Out, "Mode: dry-run (no files changed)")
+		ui.PrintKV(opts.Out, "Mode", "dry-run (no files changed)")
 	} else {
-		fmt.Fprintln(opts.Out, "Mode: apply")
+		ui.PrintKV(opts.Out, "Mode", "apply")
 	}
-	fmt.Fprintln(opts.Out, "SSH: normal OpenSSH; Tailscale SSH is not used")
+	ui.PrintKV(opts.Out, "SSH", "normal OpenSSH; Tailscale SSH is not used")
 	fmt.Fprintln(opts.Out)
 
-	fmt.Fprintln(opts.Out, "Actions")
+	ui.PrintSection(opts.Out, "Actions")
 	if opts.DryRun {
 		if existed {
-			fmt.Fprintln(opts.Out, "  Config action: would update config")
+			ui.PrintKV(opts.Out, "Config action", "would update config")
 		} else {
-			fmt.Fprintln(opts.Out, "  Config action: would create config")
+			ui.PrintKV(opts.Out, "Config action", "would create config")
 		}
 		if keyExists {
-			fmt.Fprintln(opts.Out, "  Key action: no changes needed")
+			ui.PrintKV(opts.Out, "Key action", "no changes needed")
 		} else {
-			fmt.Fprintf(opts.Out, "  Key action: would generate Ed25519 key at %s\n", identityFile)
+			ui.PrintKV(opts.Out, "Key action", "would generate Ed25519 key at "+identityFile)
 		}
 		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
 		fmt.Fprintln(opts.Out)
-		fmt.Fprintln(opts.Out, "Next steps")
-		fmt.Fprintln(opts.Out, "  1. Re-run without --dry-run when the plan looks right")
+		ui.PrintSection(opts.Out, "Next steps")
+		ui.PrintStep(opts.Out, 1, "Re-run without --dry-run when the plan looks right")
 		return nil
 	}
 
 	generated := false
 	if keyExists {
-		fmt.Fprintln(opts.Out, "  Key action: no changes needed")
+		ui.PrintKV(opts.Out, "Key action", "no changes needed")
 	} else {
 		if err := os.MkdirAll(filepath.Dir(keyPath), 0o700); err != nil {
 			return err
@@ -143,24 +144,24 @@ func Run(opts Options) error {
 		return err
 	}
 	if existed {
-		fmt.Fprintln(opts.Out, "  Config action: updated config")
+		ui.PrintKV(opts.Out, "Config action", "updated config")
 	} else {
-		fmt.Fprintln(opts.Out, "  Config action: created config")
+		ui.PrintKV(opts.Out, "Config action", "created config")
 	}
 	if generated {
-		fmt.Fprintf(opts.Out, "  Key action: generated Ed25519 key at %s\n", identityFile)
+		ui.PrintKV(opts.Out, "Key action", "generated Ed25519 key at "+identityFile)
 	}
 	if publicKey, err := os.ReadFile(publicKeyPath); err == nil {
 		fmt.Fprintln(opts.Out)
-		fmt.Fprintln(opts.Out, "Public key for host authorization")
+		ui.PrintSection(opts.Out, "Public key for host authorization")
 		fmt.Fprint(opts.Out, string(publicKey))
 	}
 	fmt.Fprintln(opts.Out)
-	fmt.Fprintln(opts.Out, "Next steps")
-	fmt.Fprintln(opts.Out, "  1. Run the shown public key through stead host authorize on the host Mac")
-	fmt.Fprintln(opts.Out, "  2. stead client apply --dry-run --alias "+alias)
-	fmt.Fprintln(opts.Out, "  3. stead client apply --alias "+alias)
-	fmt.Fprintln(opts.Out, "  4. stead setup --alias "+alias+" --dry-run --verify")
+	ui.PrintSection(opts.Out, "Next steps")
+	ui.PrintStep(opts.Out, 1, "Run the shown public key through stead host authorize on the host Mac")
+	ui.PrintStep(opts.Out, 2, "stead client apply --dry-run --alias "+alias)
+	ui.PrintStep(opts.Out, 3, "stead client apply --alias "+alias)
+	ui.PrintStep(opts.Out, 4, "stead setup --alias "+alias+" --dry-run --verify")
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/ui"
 )
 
 // WriteClient prints a read-only client setup plan for one configured host.
@@ -22,14 +23,14 @@ func WriteClient(out io.Writer, cfg *config.Config, path, alias string) error {
 		return fmt.Errorf("alias %q not found in %s", alias, path)
 	}
 
-	fmt.Fprintln(out, "Stead client plan")
+	ui.PrintTitle(out, "Stead client plan")
 	fmt.Fprintln(out)
-	fmt.Fprintf(out, "Config: %s\n", path)
-	fmt.Fprintf(out, "Alias: %s\n", alias)
-	fmt.Fprintln(out, "Mode: read-only plan")
+	ui.PrintKV(out, "Config", path)
+	ui.PrintKV(out, "Alias", alias)
+	ui.PrintKV(out, "Mode", "read-only plan")
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Proposed ~/.ssh/config entry")
+	ui.PrintSection(out, "Proposed ~/.ssh/config entry")
 	fmt.Fprintf(out, "  Host %s\n", alias)
 	fmt.Fprintf(out, "      HostName %s\n", configValue(host.Hostname))
 	fmt.Fprintf(out, "      User %s\n", configValue(host.User))
@@ -41,57 +42,57 @@ func WriteClient(out io.Writer, cfg *config.Config, path, alias string) error {
 	fmt.Fprintln(out, "      IdentitiesOnly yes")
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Connection behavior")
-	fmt.Fprintln(out, "  SSH command: system ssh")
-	fmt.Fprintln(out, "  SSH authentication: OpenSSH/macOS sshd, using normal SSH keys or server policy")
-	fmt.Fprintln(out, "  Tailscale SSH: not used")
+	ui.PrintSection(out, "Connection behavior")
+	ui.PrintKV(out, "SSH command", "system ssh")
+	ui.PrintKV(out, "SSH authentication", "OpenSSH/macOS sshd, using normal SSH keys or server policy")
+	ui.PrintKV(out, "Tailscale SSH", "not used")
 	if host.PreferredNetwork != "" {
-		fmt.Fprintf(out, "  Preferred network: %s\n", host.PreferredNetwork)
+		ui.PrintKV(out, "Preferred network", host.PreferredNetwork)
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Wake flow")
+	ui.PrintSection(out, "Wake flow")
 	if host.Wake.MACAddress == "" && host.Wake.Broadcast == "" {
-		fmt.Fprintln(out, "  not configured")
+		ui.PrintKV(out, "Status", "not configured")
 	} else {
-		fmt.Fprintf(out, "  MAC address: %s\n", displayValue(host.Wake.MACAddress))
-		fmt.Fprintf(out, "  Broadcast: %s\n", displayValue(host.Wake.Broadcast))
-		fmt.Fprintf(out, "  Timeout: %s\n", valueOrDefault(host.Wake.Timeout, "90s"))
-		fmt.Fprintf(out, "  Interval: %s\n", valueOrDefault(host.Wake.Interval, "2s"))
-		fmt.Fprintln(out, "  Behavior: send Wake-on-LAN, wait for SSH port, then exec system ssh")
+		ui.PrintKV(out, "MAC address", displayValue(host.Wake.MACAddress))
+		ui.PrintKV(out, "Broadcast", displayValue(host.Wake.Broadcast))
+		ui.PrintKV(out, "Timeout", valueOrDefault(host.Wake.Timeout, "90s"))
+		ui.PrintKV(out, "Interval", valueOrDefault(host.Wake.Interval, "2s"))
+		ui.PrintKV(out, "Behavior", "send Wake-on-LAN, wait for SSH port, then exec system ssh")
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "Session")
+	ui.PrintSection(out, "Session")
 	if host.Session.Tmux {
-		fmt.Fprintf(out, "  tmux: enabled")
+		tmux := "enabled"
 		if host.Session.TmuxSession != "" {
-			fmt.Fprintf(out, " (%s)", host.Session.TmuxSession)
+			tmux += " (" + host.Session.TmuxSession + ")"
 		}
-		fmt.Fprintln(out)
+		ui.PrintKV(out, "tmux", tmux)
 	} else {
-		fmt.Fprintln(out, "  tmux: disabled")
+		ui.PrintKV(out, "tmux", "disabled")
 	}
 	if host.Session.ProjectDir != "" {
-		fmt.Fprintf(out, "  Project directory: %s\n", host.Session.ProjectDir)
+		ui.PrintKV(out, "Project directory", host.Session.ProjectDir)
 	}
 	fmt.Fprintln(out)
 
 	findings := findings(host)
-	fmt.Fprintln(out, "Readiness")
+	ui.PrintSection(out, "Readiness")
 	if len(findings) == 0 {
-		fmt.Fprintln(out, "  ok")
+		ui.PrintKV(out, "Status", ui.State(out, "ok"))
 	} else {
 		for _, finding := range findings {
-			fmt.Fprintf(out, "  incomplete: %s\n", finding)
+			ui.PrintKV(out, "Incomplete", finding)
 		}
 	}
 	notes := notes(host)
 	if len(notes) > 0 {
 		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Notes")
+		ui.PrintSection(out, "Notes")
 		for _, note := range notes {
-			fmt.Fprintf(out, "  %s\n", note)
+			ui.PrintListItem(out, note)
 		}
 	}
 

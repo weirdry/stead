@@ -40,25 +40,30 @@ func Run(opts Options) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	fmt.Fprintln(out, "Stead verify")
+	ui.PrintTitle(out, "Stead verify")
 	fmt.Fprintln(out)
-	fmt.Fprintf(out, "Alias: %s\n", opts.Alias)
-	fmt.Fprintf(out, "Check: ssh BatchMode login\n")
+	ui.PrintKV(out, "Alias", opts.Alias)
+	ui.PrintKV(out, "Check", "ssh BatchMode login")
 	fmt.Fprintln(out)
 
 	err := runner(ctx, opts.Alias)
 	if err == nil {
-		fmt.Fprintf(out, "Result: %s\n", ui.State(out, "ok"))
-		fmt.Fprintf(out, "Next: ssh %s\n", opts.Alias)
+		ui.PrintSection(out, "Result")
+		ui.PrintKV(out, "Login", ui.State(out, "ok"))
+		fmt.Fprintln(out)
+		ui.PrintSection(out, "Next steps")
+		ui.PrintStep(out, 1, "ssh "+opts.Alias)
 		return nil
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		fmt.Fprintf(out, "Result: %s\n", ui.State(out, "failed"))
-		fmt.Fprintf(out, "Reason: timed out after %s\n", timeout)
+		ui.PrintSection(out, "Result")
+		ui.PrintKV(out, "Login", ui.State(out, "failed"))
+		ui.PrintKV(out, "Reason", "timed out after "+timeout.String())
 		return nil
 	}
-	fmt.Fprintf(out, "Result: %s\n", ui.State(out, "failed"))
-	fmt.Fprintf(out, "Reason: %v\n", err)
+	ui.PrintSection(out, "Result")
+	ui.PrintKV(out, "Login", ui.State(out, "failed"))
+	ui.PrintKV(out, "Reason", err.Error())
 	return nil
 }
 

@@ -24,7 +24,8 @@ func TestRunReportsOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "Result: ok") {
+	out := buf.String()
+	if !strings.Contains(out, "Login:") || !strings.Contains(out, "ok") {
 		t.Fatalf("output missing ok result:\n%s", buf.String())
 	}
 }
@@ -42,7 +43,8 @@ func TestRunReportsFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "Result: failed") || !strings.Contains(buf.String(), "ssh failed") {
+	out := buf.String()
+	if !strings.Contains(out, "Login:") || !strings.Contains(out, "failed") || !strings.Contains(out, "ssh failed") {
 		t.Fatalf("output missing failure:\n%s", buf.String())
 	}
 }

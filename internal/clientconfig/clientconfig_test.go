@@ -100,8 +100,10 @@ func TestWriteDryRunDoesNotModifySSHConfig(t *testing.T) {
 
 	out := buf.String()
 	for _, want := range []string{
-		"Mode: dry-run",
-		"Action: would add managed SSH config block",
+		"Mode:",
+		"dry-run",
+		"Action:",
+		"would add managed SSH config block",
 		"# BEGIN stead devmac",
 		"No files were modified.",
 	} {
@@ -129,7 +131,7 @@ func TestWriteDryRunReportsIncludeDirective(t *testing.T) {
 	if err := WriteDryRun(&buf, cfg, "/tmp/stead-config.toml", sshConfig, "devmac"); err != nil {
 		t.Fatalf("WriteDryRun returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "Note: Include directive present; included files are not expanded") {
+	if !strings.Contains(buf.String(), "Note:") || !strings.Contains(buf.String(), "Include directive present; included files are not expanded") {
 		t.Fatalf("output missing Include note:\n%s", buf.String())
 	}
 }
@@ -156,7 +158,7 @@ func TestWriteApplyCreatesSSHConfig(t *testing.T) {
 	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
 		t.Fatalf("unexpected backups for new config: %#v", backups)
 	}
-	if !strings.Contains(buf.String(), "Action: added managed SSH config block") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "added managed SSH config block") {
 		t.Fatalf("output missing add action:\n%s", buf.String())
 	}
 }
@@ -197,7 +199,7 @@ func TestWriteApplyAppendsAndBacksUpExistingSSHConfig(t *testing.T) {
 	if string(backup) != original {
 		t.Fatalf("backup content = %q", string(backup))
 	}
-	if !strings.Contains(buf.String(), "Backup: "+backups[0]) {
+	if !strings.Contains(buf.String(), "Backup:") || !strings.Contains(buf.String(), backups[0]) {
 		t.Fatalf("output missing backup path:\n%s", buf.String())
 	}
 }
@@ -230,7 +232,7 @@ func TestWriteApplyReplacesManagedBlock(t *testing.T) {
 	if !strings.Contains(got, "Host other") || !strings.Contains(got, "Host after") {
 		t.Fatalf("unrelated content not preserved:\n%s", got)
 	}
-	if !strings.Contains(buf.String(), "Action: replaced existing managed SSH config block") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "replaced existing managed SSH config block") {
 		t.Fatalf("output missing replace action:\n%s", buf.String())
 	}
 }
@@ -250,7 +252,7 @@ func TestWriteApplyUnchangedDoesNotWriteBackup(t *testing.T) {
 	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
 		t.Fatalf("unexpected backups: %#v", backups)
 	}
-	if !strings.Contains(buf.String(), "Action: no changes needed") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "no changes needed") {
 		t.Fatalf("output missing unchanged action:\n%s", buf.String())
 	}
 }
@@ -298,7 +300,7 @@ func TestWriteUnapplyDryRunDoesNotModifySSHConfig(t *testing.T) {
 	if string(data) != original {
 		t.Fatalf("dry-run modified config:\n%s", string(data))
 	}
-	if !strings.Contains(buf.String(), "Action: would remove managed SSH config block") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "would remove managed SSH config block") {
 		t.Fatalf("output missing remove action:\n%s", buf.String())
 	}
 }
@@ -332,7 +334,7 @@ func TestWriteUnapplyRemovesManagedBlock(t *testing.T) {
 	if backups := backupFiles(t, sshConfig); len(backups) != 1 {
 		t.Fatalf("backup count = %d, want 1", len(backups))
 	}
-	if !strings.Contains(buf.String(), "Action: removed managed SSH config block") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "removed managed SSH config block") {
 		t.Fatalf("output missing removed action:\n%s", buf.String())
 	}
 }
@@ -352,7 +354,7 @@ func TestWriteUnapplyAbsentNoOps(t *testing.T) {
 	if backups := backupFiles(t, sshConfig); len(backups) != 0 {
 		t.Fatalf("unexpected backups: %#v", backups)
 	}
-	if !strings.Contains(buf.String(), "Action: no changes needed") {
+	if !strings.Contains(buf.String(), "Action:") || !strings.Contains(buf.String(), "no changes needed") {
 		t.Fatalf("output missing no-op action:\n%s", buf.String())
 	}
 }
