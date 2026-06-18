@@ -7,10 +7,15 @@ import (
 )
 
 const (
-	green  = "\033[32m"
-	yellow = "\033[33m"
-	red    = "\033[31m"
-	reset  = "\033[0m"
+	bold    = "\033[1m"
+	dim     = "\033[2m"
+	cyan    = "\033[36m"
+	blue    = "\033[34m"
+	green   = "\033[32m"
+	yellow  = "\033[33m"
+	red     = "\033[31m"
+	magenta = "\033[35m"
+	reset   = "\033[0m"
 )
 
 var colorDisabled bool
@@ -48,7 +53,38 @@ func State(out io.Writer, state string) string {
 	if color == "" {
 		return state
 	}
-	return color + state + reset
+	return bold + color + state + reset
+}
+
+func Title(out io.Writer, text string) string {
+	return style(out, text, bold+cyan)
+}
+
+func Section(out io.Writer, text string) string {
+	return style(out, text, bold+blue)
+}
+
+func Rule(out io.Writer, text string) string {
+	return style(out, text, dim+blue)
+}
+
+func Label(out io.Writer, text string) string {
+	return style(out, text, dim)
+}
+
+func Detail(out io.Writer, text string) string {
+	return style(out, text, dim)
+}
+
+func Note(out io.Writer, text string) string {
+	return style(out, text, magenta)
+}
+
+func style(out io.Writer, text, code string) string {
+	if !ColorEnabled(out) {
+		return text
+	}
+	return code + text + reset
 }
 
 func stateColor(state string) string {

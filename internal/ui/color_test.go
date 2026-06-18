@@ -15,6 +15,22 @@ func TestStateDoesNotColorNonTerminalWriter(t *testing.T) {
 	}
 }
 
+func TestRoleStylesDoNotColorNonTerminalWriter(t *testing.T) {
+	var buf bytes.Buffer
+	for name, got := range map[string]string{
+		"title":   Title(&buf, "Title"),
+		"section": Section(&buf, "Section"),
+		"rule":    Rule(&buf, "----"),
+		"label":   Label(&buf, "Label:"),
+		"detail":  Detail(&buf, "(detail)"),
+		"note":    Note(&buf, "note"),
+	} {
+		if strings.Contains(got, "\033[") {
+			t.Fatalf("%s style should not contain ANSI escape sequence for non-terminal writer: %q", name, got)
+		}
+	}
+}
+
 func TestStateHonorsNoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	got := State(os.Stdout, "failed")
