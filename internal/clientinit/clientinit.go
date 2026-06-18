@@ -99,30 +99,36 @@ func Run(opts Options) error {
 	fmt.Fprintf(opts.Out, "User: %s\n", localUser)
 	fmt.Fprintf(opts.Out, "IdentityFile: %s\n", identityFile)
 	if opts.DryRun {
-		fmt.Fprintln(opts.Out, "Mode: dry-run")
+		fmt.Fprintln(opts.Out, "Mode: dry-run (no files changed)")
 	} else {
 		fmt.Fprintln(opts.Out, "Mode: apply")
 	}
+	fmt.Fprintln(opts.Out, "SSH: normal OpenSSH; Tailscale SSH is not used")
 	fmt.Fprintln(opts.Out)
 
+	fmt.Fprintln(opts.Out, "Actions")
 	if opts.DryRun {
 		if existed {
-			fmt.Fprintln(opts.Out, "Config action: would update config")
+			fmt.Fprintln(opts.Out, "  Config action: would update config")
 		} else {
-			fmt.Fprintln(opts.Out, "Config action: would create config")
+			fmt.Fprintln(opts.Out, "  Config action: would create config")
 		}
 		if keyExists {
-			fmt.Fprintln(opts.Out, "Key action: no changes needed")
+			fmt.Fprintln(opts.Out, "  Key action: no changes needed")
 		} else {
-			fmt.Fprintf(opts.Out, "Key action: would generate Ed25519 key at %s\n", identityFile)
+			fmt.Fprintf(opts.Out, "  Key action: would generate Ed25519 key at %s\n", identityFile)
 		}
+		fmt.Fprintln(opts.Out)
 		fmt.Fprintln(opts.Out, "No files were modified.")
+		fmt.Fprintln(opts.Out)
+		fmt.Fprintln(opts.Out, "Next steps")
+		fmt.Fprintln(opts.Out, "  1. Re-run without --dry-run when the plan looks right")
 		return nil
 	}
 
 	generated := false
 	if keyExists {
-		fmt.Fprintln(opts.Out, "Key action: no changes needed")
+		fmt.Fprintln(opts.Out, "  Key action: no changes needed")
 	} else {
 		if err := os.MkdirAll(filepath.Dir(keyPath), 0o700); err != nil {
 			return err
@@ -136,16 +142,25 @@ func Run(opts Options) error {
 	if err := config.Save(path, cfg); err != nil {
 		return err
 	}
+	if existed {
+		fmt.Fprintln(opts.Out, "  Config action: updated config")
+	} else {
+		fmt.Fprintln(opts.Out, "  Config action: created config")
+	}
 	if generated {
-		fmt.Fprintf(opts.Out, "Key action: generated Ed25519 key at %s\n", identityFile)
+		fmt.Fprintf(opts.Out, "  Key action: generated Ed25519 key at %s\n", identityFile)
 	}
 	if publicKey, err := os.ReadFile(publicKeyPath); err == nil {
 		fmt.Fprintln(opts.Out)
-		fmt.Fprintln(opts.Out, "Public key")
+		fmt.Fprintln(opts.Out, "Public key for host authorization")
 		fmt.Fprint(opts.Out, string(publicKey))
 	}
 	fmt.Fprintln(opts.Out)
-	fmt.Fprintln(opts.Out, "Next: run stead client apply --dry-run --alias "+alias)
+	fmt.Fprintln(opts.Out, "Next steps")
+	fmt.Fprintln(opts.Out, "  1. Run the shown public key through stead host authorize on the host Mac")
+	fmt.Fprintln(opts.Out, "  2. stead client apply --dry-run --alias "+alias)
+	fmt.Fprintln(opts.Out, "  3. stead client apply --alias "+alias)
+	fmt.Fprintln(opts.Out, "  4. stead setup --alias "+alias+" --dry-run --verify")
 	return nil
 }
 
