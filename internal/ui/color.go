@@ -69,7 +69,7 @@ func Rule(out io.Writer, text string) string {
 }
 
 func Label(out io.Writer, text string) string {
-	return style(out, text, dim)
+	return style(out, text, bold)
 }
 
 func Detail(out io.Writer, text string) string {
