@@ -95,6 +95,8 @@ It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, la
 
 Host hardening is intentionally not automatic yet.
 
+`stead host harden` is currently dry-run only. It prints the proposed `/etc/ssh/sshd_config.d/stead.conf` content and refuses to run without `--dry-run`.
+
 Current status output may warn about:
 
 - password authentication
@@ -102,4 +104,4 @@ Current status output may warn about:
 - missing `AllowUsers` or `AllowGroups`
 - missing managed host config
 
-Those warnings are informational until an explicit hardening command is implemented and reviewed.
+Those warnings are informational until the privileged apply path is implemented and reviewed.

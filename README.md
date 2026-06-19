@@ -73,6 +73,7 @@ stead client apply --alias devmac
 
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
+stead host harden --dry-run --user ed --disable-password
 
 stead verify --alias devmac
 ssh devmac

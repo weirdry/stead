@@ -155,6 +155,16 @@ ssh devmac
 
 The actual SSH transport and authentication are still handled by the system `ssh` command and macOS `sshd`.
 
+## 9. Preview Host Hardening
+
+After key login works, preview the host sshd hardening drop-in:
+
+```bash
+stead host harden --dry-run --user ed --disable-password
+```
+
+This is read-only today. It shows the proposed `/etc/ssh/sshd_config.d/stead.conf` content but does not install it or reload sshd.
+
 ## Undo
 
 Remove the managed client SSH config block:

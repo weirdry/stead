@@ -91,6 +91,7 @@ stead host status
 stead host status --effective
 stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host unauthorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
+stead host harden --dry-run --user ed --disable-password
 
 stead client status
 stead client init
@@ -110,7 +111,6 @@ The following commands remain design targets and are not implemented yet:
 ```bash
 stead doctor
 stead host install
-stead host harden
 stead host uninstall
 stead client uninstall
 stead wake --alias devmac
@@ -124,7 +124,7 @@ Example flags:
 stead host install --user ed --tmux-session main
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
-stead host harden --user ed --disable-password
+stead host harden --dry-run --user ed --disable-password
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac

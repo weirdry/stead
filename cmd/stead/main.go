@@ -10,6 +10,7 @@ import (
 	"github.com/ed/stead/internal/clientinit"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/hostauth"
+	"github.com/ed/stead/internal/hostharden"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/setup"
 	"github.com/ed/stead/internal/status"
@@ -130,6 +131,9 @@ func runHost(args []string) error {
 	if len(args) >= 1 && args[0] == "unauthorize" {
 		return runHostUnauthorize(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "harden" {
+		return runHostHarden(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
 }
@@ -146,6 +150,28 @@ func runHostStatus(args []string) error {
 		}
 	}
 	return status.RunHost(os.Stdout, opts)
+}
+
+func runHostHarden(args []string) error {
+	opts := hostharden.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--user":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--user requires a value")
+			}
+			opts.User = args[i+1]
+			i++
+		case "--disable-password":
+			opts.DisablePassword = true
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host harden option %q", args[i])
+		}
+	}
+	return hostharden.Run(opts)
 }
 
 func runHostAuthorize(args []string) error {
@@ -416,6 +442,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host status [--effective]")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
+	fmt.Fprintln(out, "  stead host harden --dry-run [--user name] [--disable-password]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Client:")
 	fmt.Fprintln(out, "  stead client status")

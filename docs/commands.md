@@ -82,6 +82,29 @@ stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac
 
 It removes only the matching public key material.
 
+### `stead host harden`
+
+Prints the host sshd hardening drop-in that `stead` would install.
+
+```bash
+stead host harden --dry-run --user ed --disable-password
+stead host harden --dry-run
+```
+
+This command is preview-only for now and requires `--dry-run`. It does not write `/etc/ssh/sshd_config.d/stead.conf`, validate sshd, reload services, or change Remote Login.
+
+With `--disable-password`, the proposed drop-in includes:
+
+```sshconfig
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+AllowUsers ed
+```
+
+Without `--disable-password`, password-style SSH authentication is left unchanged in the preview.
+
 ## Client
 
 ### `stead client status`
