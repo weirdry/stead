@@ -88,6 +88,9 @@ stead --no-color status
 - [From scratch host + client setup](docs/from-scratch.md)
 - [Existing setup migration](docs/migration.md)
 - [Safety and ownership model](docs/safety.md)
+- [Command reference](docs/commands.md)
+- [Configuration reference](docs/config.md)
+- [Troubleshooting](docs/troubleshooting.md)
 - [Design notes](docs/design.md)
 
 ## Development

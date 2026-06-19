@@ -74,7 +74,7 @@ Disallowed Tailscale usage:
 
 If Tailscale SSH is detected, `stead` should report it as external and unmanaged.
 
-## CLI Shape
+## Implemented CLI
 
 ```bash
 stead status
@@ -86,26 +86,32 @@ stead config path
 stead config show
 stead config init
 stead config init --dry-run
-stead doctor
 
 stead host status
 stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host unauthorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
-stead host install
-stead host harden
-stead host uninstall
 
 stead client status
 stead client init
 stead client init --alias devmac
 stead client init --alias devmac --discover tailscale --yes
-stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
+stead client init --alias devmac --hostname devmac.tailnet.example --user ed --yes
 stead client plan --alias devmac
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 stead client unapply --alias devmac --dry-run
-stead client uninstall
+```
 
+## Future CLI
+
+The following commands remain design targets and are not implemented yet:
+
+```bash
+stead doctor
+stead host install
+stead host harden
+stead host uninstall
+stead client uninstall
 stead wake --alias devmac
 stead connect --alias devmac
 stead connect --alias devmac --wake
@@ -185,7 +191,7 @@ stead verify --alias devmac
 `stead client init` may prompt for the hostname when it is not supplied. For scripts, callers can provide all required fields explicitly:
 
 ```bash
-stead client init --alias devmac --hostname devmac.tailnet.ts.net --user ed --yes
+stead client init --alias devmac --hostname devmac.tailnet.example --user ed --yes
 ```
 
 When Tailscale is installed on the client, `stead client init --discover tailscale` may call `tailscale status --json` to find a peer matching the alias. It should prefer the peer's MagicDNS name and fall back to its Tailscale IP. This requires a usable local Tailscale CLI. This is discovery only; it must not enable or use Tailscale SSH.
