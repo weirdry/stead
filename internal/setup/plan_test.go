@@ -98,6 +98,7 @@ func TestWritePlanVerifyOKSuppressesHostAuthorizeSteps(t *testing.T) {
 	for _, want := range []string{
 		"SSH login:",
 		"ok",
+		"stead host harden --dry-run --user 'ed' --disable-password",
 		"ssh devmac",
 	} {
 		if !strings.Contains(out, want) {

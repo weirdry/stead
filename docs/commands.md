@@ -36,6 +36,12 @@ stead setup --alias devmac --dry-run --verify
 
 With `--verify`, it runs the same non-interactive SSH check as `stead verify`. If login succeeds, host authorization is considered proven.
 
+When key login is verified and the configured host user is known, the setup plan also suggests:
+
+```bash
+stead host harden --dry-run --user <user> --disable-password
+```
+
 ### `stead verify`
 
 Checks whether OpenSSH key login works without prompting for a password.

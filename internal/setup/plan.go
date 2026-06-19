@@ -130,6 +130,10 @@ func WritePlan(opts Options) error {
 		ui.PrintKV(out, "Public key handoff", "pending until public key exists")
 	} else if verified {
 		ui.PrintKV(out, "SSH login", ui.State(out, "ok"))
+		if host != nil && host.User != "" {
+			steps = append(steps, "stead host harden --dry-run --user "+shellQuote(host.User)+" --disable-password")
+		}
+		steps = append(steps, "ssh "+alias)
 	} else {
 		if opts.Verify && verifyFailed {
 			ui.PrintKV(out, "SSH login", ui.State(out, "failed"))
