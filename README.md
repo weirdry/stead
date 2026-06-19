@@ -61,6 +61,7 @@ Uninstall the installed binary only:
 ```bash
 stead status
 stead host status
+stead host status --effective
 stead client status
 
 stead setup --alias devmac --dry-run

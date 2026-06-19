@@ -25,6 +25,7 @@ Run on the host Mac:
 
 ```bash
 stead host status
+stead host status --effective
 ```
 
 Confirm:
@@ -33,7 +34,7 @@ Confirm:
 - `~/.ssh/authorized_keys` exists or can be created later.
 - Tailscale network metadata shows an IP or a usable private hostname.
 
-This command is read-only.
+These commands are read-only. `--effective` asks `sshd` to evaluate its effective config without sudo; on macOS it may be unable to read host keys as a normal user.
 
 ## 2. Choose A Client Alias
 

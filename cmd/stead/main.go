@@ -121,8 +121,8 @@ func runVerify(args []string) error {
 }
 
 func runHost(args []string) error {
-	if len(args) == 1 && args[0] == "status" {
-		return status.RunHost(os.Stdout)
+	if len(args) >= 1 && args[0] == "status" {
+		return runHostStatus(args[1:])
 	}
 	if len(args) >= 1 && args[0] == "authorize" {
 		return runHostAuthorize(args[1:])
@@ -132,6 +132,20 @@ func runHost(args []string) error {
 	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
+}
+
+func runHostStatus(args []string) error {
+	opts := status.HostOptions{}
+	for _, arg := range args {
+		switch arg {
+		case "--effective":
+			opts.EffectiveSSHD = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host status option %q", arg)
+		}
+	}
+	return status.RunHost(os.Stdout, opts)
 }
 
 func runHostAuthorize(args []string) error {
@@ -399,7 +413,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
-	fmt.Fprintln(out, "  stead host status")
+	fmt.Fprintln(out, "  stead host status [--effective]")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out)

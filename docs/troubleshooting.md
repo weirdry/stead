@@ -73,7 +73,10 @@ Check host-side authorization:
 
 ```bash
 stead host status
+stead host status --effective
 ```
+
+If `--effective` reports that `sshd -T` needs root-readable host keys, the effective config could not be evaluated by an unprivileged user. `stead` does not run sudo or change sshd state.
 
 Authorize the public key if needed:
 

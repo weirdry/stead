@@ -21,23 +21,31 @@ import (
 
 // Run prints a read-only snapshot of the local machine's Stead-relevant state.
 func Run(out io.Writer) error {
-	s := collect()
+	s := collect(statusOptions{})
 	printCombined(out, s)
 	return nil
 }
 
 // RunHost prints read-only host-side status.
-func RunHost(out io.Writer) error {
-	s := collect()
+func RunHost(out io.Writer, opts HostOptions) error {
+	s := collect(statusOptions{EffectiveSSHD: opts.EffectiveSSHD})
 	printHost(out, s)
 	return nil
 }
 
 // RunClient prints read-only client-side status.
 func RunClient(out io.Writer) error {
-	s := collect()
+	s := collect(statusOptions{})
 	printClient(out, s)
 	return nil
+}
+
+type HostOptions struct {
+	EffectiveSSHD bool
+}
+
+type statusOptions struct {
+	EffectiveSSHD bool
 }
 
 type snapshot struct {
@@ -61,6 +69,9 @@ type snapshot struct {
 	Tmux             check
 	TmuxAutoAttach   check
 	Hardening        []finding
+	EffectiveRequest bool
+	EffectiveSSHD    check
+	EffectiveValues  []effectiveValue
 	Config           check
 	ConfigAlias      string
 	ConfigHosts      []config.HostStatus
@@ -81,7 +92,12 @@ type finding struct {
 	Detail string
 }
 
-func collect() snapshot {
+type effectiveValue struct {
+	Key   string
+	Value string
+}
+
+func collect(opts statusOptions) snapshot {
 	u, _ := user.Current()
 	home := ""
 	username := "unknown"
@@ -114,7 +130,11 @@ func collect() snapshot {
 	s.Tmux = lookPath("tmux")
 	s.TmuxAutoAttach = tmuxAutoAttach(filepath.Join(home, ".zshrc"))
 	s.DefaultHostLike = s.SSHDPath.State == "ok" && s.HostSSHConfig.State == "ok"
-	s.Hardening = hostHardening(s)
+	s.EffectiveRequest = opts.EffectiveSSHD
+	if opts.EffectiveSSHD {
+		s.EffectiveSSHD, s.EffectiveValues = effectiveSSHDConfig(s.SSHDPath)
+	}
+	s.Hardening = hostHardening(s, opts.EffectiveSSHD)
 	s.Config, s.ConfigAlias, s.ConfigHosts = steadConfig()
 	s.ClientAliases, s.ClientConfigNote = clientAliases(s.UserSSHConfig, filepath.Join(home, ".ssh", "config"), s.ConfigHosts)
 
@@ -185,6 +205,15 @@ func printHostSections(out io.Writer, s snapshot) {
 		printFinding(out, finding)
 	}
 	fmt.Fprintln(out)
+
+	if s.EffectiveRequest {
+		printSection(out, "Effective sshd config")
+		printCheck(out, "Status", s.EffectiveSSHD)
+		for _, item := range s.EffectiveValues {
+			printValue(out, item.Key, value(item.Value))
+		}
+		fmt.Fprintln(out)
+	}
 }
 
 func printClientSections(out io.Writer, s snapshot) {
@@ -438,7 +467,7 @@ func formatConfigLine(fields []string) string {
 	return redactConfigLine(strings.Join(fields, " "))
 }
 
-func hostHardening(s snapshot) []finding {
+func hostHardening(s snapshot, effectiveRequested bool) []finding {
 	directives := sshdDirectives()
 	findings := make([]finding, 0, 8)
 
@@ -473,13 +502,133 @@ func hostHardening(s snapshot) []finding {
 	findings = append(findings, assessUserRestriction(directives))
 	findings = append(findings, assessKeyMaterial(s.AuthorizedKeys))
 	findings = append(findings, assessSteadHostConfig())
-	findings = append(findings, finding{
-		Label:  "Effective sshd config",
-		State:  "unknown",
-		Detail: "not evaluated yet; future host status should use sshd -T when permissions allow",
-	})
+	if !effectiveRequested {
+		findings = append(findings, finding{
+			Label:  "Effective sshd config",
+			State:  "unknown",
+			Detail: "not evaluated; run stead host status --effective",
+		})
+	}
 
 	return findings
+}
+
+func effectiveSSHDConfig(sshd check) (check, []effectiveValue) {
+	if sshd.State != "ok" || sshd.Detail == "" {
+		return check{State: "unknown", Detail: "sshd not found"}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, sshd.Detail, "-T")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return check{State: "unknown", Detail: effectiveSSHDError(err, out)}, nil
+	}
+
+	values := parseEffectiveSSHDConfig(string(out))
+	return check{State: "ok", Detail: "read-only sshd -T"}, values
+}
+
+func effectiveSSHDError(err error, out []byte) string {
+	detail := shortCommandError(err, out)
+	if strings.Contains(strings.ToLower(detail), "no hostkeys available") {
+		return "sshd -T needs root-readable host keys on this macOS; no sudo attempted"
+	}
+	return detail
+}
+
+func parseEffectiveSSHDConfig(text string) []effectiveValue {
+	seen := make(map[string][]string)
+	for _, line := range strings.Split(text, "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) < 2 {
+			continue
+		}
+		key := strings.ToLower(fields[0])
+		if !trackedEffectiveSSHDKeys()[key] {
+			continue
+		}
+		seen[key] = append(seen[key], strings.Join(fields[1:], " "))
+	}
+
+	values := make([]effectiveValue, 0, len(seen))
+	for _, key := range effectiveSSHDKeyOrder() {
+		rawValues := seen[key]
+		if len(rawValues) == 0 {
+			continue
+		}
+		values = append(values, effectiveValue{
+			Key:   key,
+			Value: redactEffectiveSSHDValue(key, strings.Join(rawValues, ", ")),
+		})
+	}
+	return values
+}
+
+func effectiveSSHDKeyOrder() []string {
+	return []string{
+		"port",
+		"listenaddress",
+		"passwordauthentication",
+		"pubkeyauthentication",
+		"kbdinteractiveauthentication",
+		"challengeresponseauthentication",
+		"permitrootlogin",
+		"allowusers",
+		"allowgroups",
+		"denyusers",
+		"denygroups",
+		"authenticationmethods",
+		"authorizedkeysfile",
+		"usepam",
+		"forcecommand",
+		"chrootdirectory",
+		"x11forwarding",
+		"allowtcpforwarding",
+		"permittunnel",
+		"gatewayports",
+		"pubkeyacceptedalgorithms",
+		"hostkeyalgorithms",
+	}
+}
+
+func trackedEffectiveSSHDKeys() map[string]bool {
+	keys := make(map[string]bool)
+	for _, key := range effectiveSSHDKeyOrder() {
+		keys[key] = true
+	}
+	return keys
+}
+
+func redactEffectiveSSHDValue(key, value string) string {
+	switch key {
+	case "forcecommand", "chrootdirectory":
+		if value == "none" {
+			return value
+		}
+		return "[redacted]"
+	case "pubkeyacceptedalgorithms", "hostkeyalgorithms":
+		return summarizeAlgorithms(value)
+	default:
+		return value
+	}
+}
+
+func summarizeAlgorithms(value string) string {
+	parts := strings.Split(value, ",")
+	clean := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			clean = append(clean, part)
+		}
+	}
+	if len(clean) <= 6 {
+		return strings.Join(clean, ", ")
+	}
+	return fmt.Sprintf("%d algorithm(s): %s, ...", len(clean), strings.Join(clean[:6], ", "))
 }
 
 func assessBooleanDirective(label string, directives map[string][]string, key string, onNo finding, onYes finding, missing finding) finding {

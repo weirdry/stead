@@ -88,6 +88,7 @@ stead config init
 stead config init --dry-run
 
 stead host status
+stead host status --effective
 stead host authorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 stead host unauthorize --public-key 'ssh-ed25519 ...' --alias devmac --dry-run
 

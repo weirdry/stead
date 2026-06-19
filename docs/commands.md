@@ -55,7 +55,10 @@ Prints read-only host-side status.
 
 ```bash
 stead host status
+stead host status --effective
 ```
+
+`--effective` runs `sshd -T` without sudo and summarizes selected effective server settings. On macOS this may report that root-readable host keys are required; `stead` does not escalate automatically.
 
 ### `stead host authorize`
 
