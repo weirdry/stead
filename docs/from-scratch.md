@@ -202,6 +202,14 @@ stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac
 stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 ```
 
+Remove host hardening:
+
+```bash
+stead host harden --unapply --dry-run
+sudo stead host harden --unapply --apply --confirm
+sudo stead host reload --apply --confirm
+```
+
 Uninstall only the `stead` binary:
 
 ```bash

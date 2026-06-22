@@ -99,6 +99,8 @@ Host hardening is intentionally not automatic yet.
 
 `stead host harden --apply` writes only the managed drop-in target. It validates a temporary candidate first, creates a timestamped backup when replacing an existing file, and does not reload sshd automatically.
 
+`stead host harden --unapply` removes only `/etc/ssh/sshd_config.d/stead.conf`. It leaves backups, SSH keys, authorized keys, Apple config files, Remote Login, and Tailscale untouched.
+
 When password auth is disabled during apply, `stead` requires `--confirm-key-login` or `--force`.
 
 `stead host validate` is read-only. `stead host reload --dry-run` prints manual commands only and does not call `launchctl`. `stead host reload --apply --confirm` validates sshd before calling `launchctl kickstart`.

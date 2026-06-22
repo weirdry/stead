@@ -126,6 +126,8 @@ stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' 
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead host harden --dry-run --user ed --disable-password
 sudo stead host harden --apply --user ed --disable-password --confirm-key-login
+stead host harden --unapply --dry-run
+sudo stead host harden --unapply --apply --confirm
 stead host validate
 stead host reload --dry-run
 sudo stead host reload --apply --confirm
@@ -339,6 +341,8 @@ Before disabling password authentication:
 6. Print rollback instructions.
 
 `stead host harden --apply` writes only `/etc/ssh/sshd_config.d/stead.conf`, validates a temporary candidate before writing, creates a timestamped backup when replacing an existing target, and does not reload sshd automatically.
+
+`stead host harden --unapply` removes only `/etc/ssh/sshd_config.d/stead.conf`. It leaves backup files, authorized keys, SSH keys, Apple config files, Remote Login, and Tailscale untouched.
 
 `stead host validate` is read-only. `stead host reload --dry-run` prints manual validation, reload, login-test, and rollback commands without calling `launchctl`. `stead host reload --apply --confirm` validates with `/usr/sbin/sshd -t` before calling `launchctl kickstart -k system/com.openssh.sshd`.
 

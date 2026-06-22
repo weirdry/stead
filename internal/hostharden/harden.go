@@ -21,6 +21,8 @@ type Options struct {
 	DisablePassword bool
 	DryRun          bool
 	Apply           bool
+	Unapply         bool
+	Confirm         bool
 	ConfirmKeyLogin bool
 	Force           bool
 	DropInPath      string
@@ -34,6 +36,9 @@ type Validator func(path string) error
 func Run(opts Options) error {
 	if opts.Out == nil {
 		opts.Out = io.Discard
+	}
+	if opts.Unapply {
+		return unapply(opts)
 	}
 	if opts.DryRun == opts.Apply {
 		return fmt.Errorf("host harden requires exactly one of --dry-run or --apply")
@@ -61,6 +66,36 @@ func Run(opts Options) error {
 		return nil
 	}
 	return apply(opts, path, loginUser, userSource, config)
+}
+
+func unapply(opts Options) error {
+	if opts.DryRun == opts.Apply {
+		return fmt.Errorf("host harden --unapply requires exactly one of --dry-run or --apply")
+	}
+	if opts.Apply && !opts.Confirm {
+		return fmt.Errorf("host harden --unapply --apply requires --confirm")
+	}
+	path := opts.DropInPath
+	if path == "" {
+		path = DefaultDropInPath
+	}
+	exists, detail, err := dropInState(path)
+	if err != nil {
+		return err
+	}
+	if opts.DryRun {
+		printUnapplyPlan(opts.Out, path, exists, detail)
+		return nil
+	}
+	action := "no changes needed"
+	if exists {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		action = "removed managed drop-in"
+	}
+	printUnapplyApply(opts.Out, path, action)
+	return nil
 }
 
 type applyResult struct {
@@ -165,6 +200,61 @@ func printApply(out io.Writer, path, loginUser, userSource string, disablePasswo
 	ui.PrintStep(out, 3, "If needed, restore the backup or remove "+path)
 	fmt.Fprintln(out)
 	ui.PrintKV(out, "Reload", "not performed by stead")
+}
+
+func printUnapplyPlan(out io.Writer, path string, exists bool, detail string) {
+	ui.PrintTitle(out, "Stead host harden unapply")
+	fmt.Fprintln(out)
+	ui.PrintKV(out, "Mode", "dry-run (no files changed)")
+	ui.PrintKV(out, "Target", path)
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Changes")
+	if exists {
+		ui.PrintKV(out, "Action", "would remove managed drop-in")
+		ui.PrintKV(out, "Existing stead.conf", ui.StateDetail(out, "ok", detail))
+	} else {
+		ui.PrintKV(out, "Action", "no changes needed")
+		ui.PrintKV(out, "Existing stead.conf", ui.State(out, "missing"))
+	}
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Next")
+	ui.PrintStep(out, 1, "sudo stead host harden --unapply --apply --confirm")
+	ui.PrintStep(out, 2, "sudo stead host reload --apply --confirm")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "No files were modified.")
+}
+
+func printUnapplyApply(out io.Writer, path, action string) {
+	ui.PrintTitle(out, "Stead host harden unapply")
+	fmt.Fprintln(out)
+	ui.PrintKV(out, "Mode", "apply")
+	ui.PrintKV(out, "Target", path)
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Changes")
+	ui.PrintKV(out, "Action", action)
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Next")
+	ui.PrintStep(out, 1, "sudo stead host reload --apply --confirm")
+	ui.PrintStep(out, 2, "Test a new SSH login from the client")
+	ui.PrintStep(out, 3, "Re-apply hardening if this was only a rollback test")
+}
+
+func dropInState(path string) (bool, string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, "", nil
+		}
+		return false, "", err
+	}
+	if info.IsDir() {
+		return false, "", fmt.Errorf("%s is a directory", path)
+	}
+	return true, fmt.Sprintf("%d bytes", info.Size()), nil
 }
 
 func validateCandidate(dir string, content []byte, validator Validator) error {

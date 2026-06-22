@@ -86,6 +86,109 @@ func TestRunRejectsWhitespaceUser(t *testing.T) {
 	}
 }
 
+func TestRunUnapplyDryRunReportsRemoval(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stead.conf")
+	if err := os.WriteFile(path, []byte(Config("ed", true)), 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+	var buf bytes.Buffer
+	err := Run(Options{
+		Unapply:    true,
+		DryRun:     true,
+		DropInPath: path,
+		Out:        &buf,
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("dry-run removed or truncated target")
+	}
+	for _, want := range []string{
+		"Stead host harden unapply",
+		"dry-run",
+		"would remove managed drop-in",
+		"sudo stead host reload --apply --confirm",
+		"No files were modified.",
+	} {
+		if !strings.Contains(buf.String(), want) {
+			t.Fatalf("output missing %q:\n%s", want, buf.String())
+		}
+	}
+}
+
+func TestRunUnapplyDryRunReportsAbsent(t *testing.T) {
+	var buf bytes.Buffer
+	err := Run(Options{
+		Unapply:    true,
+		DryRun:     true,
+		DropInPath: filepath.Join(t.TempDir(), "stead.conf"),
+		Out:        &buf,
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "no changes needed") {
+		t.Fatalf("output missing no-op:\n%s", buf.String())
+	}
+}
+
+func TestRunUnapplyApplyRequiresConfirm(t *testing.T) {
+	err := Run(Options{
+		Unapply:    true,
+		Apply:      true,
+		DropInPath: filepath.Join(t.TempDir(), "stead.conf"),
+		Out:        &bytes.Buffer{},
+	})
+	if err == nil {
+		t.Fatal("expected confirm error")
+	}
+	if !strings.Contains(err.Error(), "--confirm") {
+		t.Fatalf("error = %q", err.Error())
+	}
+}
+
+func TestRunUnapplyApplyRemovesOnlyTarget(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "stead.conf")
+	backup := filepath.Join(dir, "stead.conf.stead-backup-20260622T030405.000000000Z")
+	if err := os.WriteFile(path, []byte(Config("ed", true)), 0o644); err != nil {
+		t.Fatalf("WriteFile target returned error: %v", err)
+	}
+	if err := os.WriteFile(backup, []byte("backup"), 0o644); err != nil {
+		t.Fatalf("WriteFile backup returned error: %v", err)
+	}
+	var buf bytes.Buffer
+	err := Run(Options{
+		Unapply:    true,
+		Apply:      true,
+		Confirm:    true,
+		DropInPath: path,
+		Out:        &buf,
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("target still exists or unexpected stat error: %v", err)
+	}
+	if _, err := os.Stat(backup); err != nil {
+		t.Fatalf("backup should be preserved: %v", err)
+	}
+	for _, want := range []string{
+		"removed managed drop-in",
+		"sudo stead host reload --apply --confirm",
+	} {
+		if !strings.Contains(buf.String(), want) {
+			t.Fatalf("output missing %q:\n%s", want, buf.String())
+		}
+	}
+}
+
 func TestRunApplyRequiresKeyLoginConfirmationWhenDisablingPassword(t *testing.T) {
 	err := Run(Options{
 		User:            "ed",

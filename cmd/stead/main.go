@@ -175,6 +175,10 @@ func runHostHarden(args []string) error {
 			opts.DryRun = true
 		case "--apply":
 			opts.Apply = true
+		case "--unapply":
+			opts.Unapply = true
+		case "--confirm":
+			opts.Confirm = true
 		case "--confirm-key-login":
 			opts.ConfirmKeyLogin = true
 		case "--force":
@@ -482,6 +486,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host harden (--dry-run|--apply) [--user name] [--disable-password] [--confirm-key-login|--force]")
+	fmt.Fprintln(out, "  stead host harden --unapply (--dry-run|--apply) [--confirm]")
 	fmt.Fprintln(out, "  stead host validate")
 	fmt.Fprintln(out, "  stead host reload (--dry-run|--apply) [--confirm]")
 	fmt.Fprintln(out)

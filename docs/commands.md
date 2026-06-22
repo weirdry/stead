@@ -96,6 +96,8 @@ Prints the host sshd hardening drop-in that `stead` would install.
 stead host harden --dry-run --user ed --disable-password
 sudo stead host harden --apply --user ed --disable-password --confirm-key-login
 stead host harden --dry-run
+stead host harden --unapply --dry-run
+sudo stead host harden --unapply --apply --confirm
 ```
 
 `--dry-run` prints the proposed `/etc/ssh/sshd_config.d/stead.conf` without changing files.
@@ -117,6 +119,12 @@ AllowUsers ed
 ```
 
 Without `--disable-password`, password-style SSH authentication is left unchanged in the preview.
+
+`--unapply` removes only `/etc/ssh/sshd_config.d/stead.conf`. It does not remove backups, authorized keys, SSH keys, Apple sshd config files, Remote Login settings, or Tailscale settings. After applying unhardening, run:
+
+```bash
+sudo stead host reload --apply --confirm
+```
 
 ### `stead host validate`
 
