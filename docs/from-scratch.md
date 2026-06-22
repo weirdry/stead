@@ -180,7 +180,11 @@ stead host validate
 stead host reload --dry-run
 ```
 
-Follow the printed manual commands only after keeping a local host session open and confirming client key login still works.
+Apply the reload only after keeping a local host session open and confirming client key login still works:
+
+```bash
+sudo stead host reload --apply --confirm
+```
 
 ## Undo
 

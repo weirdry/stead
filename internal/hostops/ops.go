@@ -18,8 +18,11 @@ type ValidateOptions struct {
 }
 
 type ReloadOptions struct {
-	DryRun bool
-	Out    io.Writer
+	DryRun  bool
+	Apply   bool
+	Confirm bool
+	Out     io.Writer
+	Runner  Runner
 }
 
 type Runner func(name string, args ...string) ([]byte, error)
@@ -66,13 +69,23 @@ func Validate(opts ValidateOptions) error {
 	return nil
 }
 
-func ReloadPlan(opts ReloadOptions) error {
+func Reload(opts ReloadOptions) error {
 	out := opts.Out
 	if out == nil {
 		out = io.Discard
 	}
-	if !opts.DryRun {
-		return fmt.Errorf("host reload currently requires --dry-run")
+	if opts.DryRun == opts.Apply {
+		return fmt.Errorf("host reload requires exactly one of --dry-run or --apply")
+	}
+	if opts.Apply && !opts.Confirm {
+		return fmt.Errorf("host reload --apply requires --confirm")
+	}
+	runner := opts.Runner
+	if runner == nil {
+		runner = commandRunner
+	}
+	if opts.Apply {
+		return applyReload(out, runner)
 	}
 
 	ui.PrintTitle(out, "Stead host reload plan")
@@ -100,6 +113,32 @@ func ReloadPlan(opts ReloadOptions) error {
 	ui.PrintStep(out, 3, "restore any .stead-backup-* file if one exists")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "No services were reloaded.")
+	return nil
+}
+
+func applyReload(out io.Writer, runner Runner) error {
+	if _, err := runner("/usr/sbin/sshd", "-t"); err != nil {
+		return fmt.Errorf("sshd validation failed: %w", err)
+	}
+	if _, err := runner("launchctl", "kickstart", "-k", "system/com.openssh.sshd"); err != nil {
+		return fmt.Errorf("launchctl reload failed: %w", err)
+	}
+
+	ui.PrintTitle(out, "Stead host reload")
+	fmt.Fprintln(out)
+	ui.PrintKV(out, "Mode", "apply")
+	ui.PrintKV(out, "Target service", "system/com.openssh.sshd")
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Changes")
+	ui.PrintKV(out, "sshd -t", ui.State(out, "ok"))
+	ui.PrintKV(out, "launchctl kickstart", ui.State(out, "ok"))
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Next")
+	ui.PrintStep(out, 1, "Test a new SSH login from the client")
+	ui.PrintStep(out, 2, "Keep the current local session open until the test passes")
+	ui.PrintStep(out, 3, "If needed, remove /etc/ssh/sshd_config.d/stead.conf and reload again")
 	return nil
 }
 

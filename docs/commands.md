@@ -134,9 +134,12 @@ Prints the manual reload plan.
 
 ```bash
 stead host reload --dry-run
+sudo stead host reload --apply --confirm
 ```
 
-This command is planning-only for now and refuses to run without `--dry-run`. It does not call `launchctl`, reload sshd, restart services, or change Remote Login.
+`--dry-run` prints the manual reload plan and does not call `launchctl`.
+
+`--apply --confirm` validates sshd with `/usr/sbin/sshd -t`, then runs `launchctl kickstart -k system/com.openssh.sshd`. It does not modify Remote Login settings.
 
 ## Client
 

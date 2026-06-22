@@ -201,12 +201,16 @@ func runHostReload(args []string) error {
 		switch arg {
 		case "--dry-run":
 			opts.DryRun = true
+		case "--apply":
+			opts.Apply = true
+		case "--confirm":
+			opts.Confirm = true
 		default:
 			printUsage(os.Stderr)
 			return fmt.Errorf("unknown host reload option %q", arg)
 		}
 	}
-	return hostops.ReloadPlan(opts)
+	return hostops.Reload(opts)
 }
 
 func runHostAuthorize(args []string) error {
@@ -479,7 +483,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host harden (--dry-run|--apply) [--user name] [--disable-password] [--confirm-key-login|--force]")
 	fmt.Fprintln(out, "  stead host validate")
-	fmt.Fprintln(out, "  stead host reload --dry-run")
+	fmt.Fprintln(out, "  stead host reload (--dry-run|--apply) [--confirm]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Client:")
 	fmt.Fprintln(out, "  stead client status")

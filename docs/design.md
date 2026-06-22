@@ -128,6 +128,7 @@ stead host harden --dry-run --user ed --disable-password
 sudo stead host harden --apply --user ed --disable-password --confirm-key-login
 stead host validate
 stead host reload --dry-run
+sudo stead host reload --apply --confirm
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
@@ -339,7 +340,7 @@ Before disabling password authentication:
 
 `stead host harden --apply` writes only `/etc/ssh/sshd_config.d/stead.conf`, validates a temporary candidate before writing, creates a timestamped backup when replacing an existing target, and does not reload sshd automatically.
 
-`stead host validate` is read-only. `stead host reload --dry-run` prints manual validation, reload, login-test, and rollback commands without calling `launchctl`.
+`stead host validate` is read-only. `stead host reload --dry-run` prints manual validation, reload, login-test, and rollback commands without calling `launchctl`. `stead host reload --apply --confirm` validates with `/usr/sbin/sshd -t` before calling `launchctl kickstart -k system/com.openssh.sshd`.
 
 `stead uninstall` must remove only what `stead` created.
 
