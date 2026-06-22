@@ -163,7 +163,15 @@ After key login works, preview the host sshd hardening drop-in:
 stead host harden --dry-run --user ed --disable-password
 ```
 
-This is read-only today. It shows the proposed `/etc/ssh/sshd_config.d/stead.conf` content but does not install it or reload sshd.
+The dry run shows the proposed `/etc/ssh/sshd_config.d/stead.conf` content but does not install it or reload sshd.
+
+To apply host hardening later, keep a local host session open and run:
+
+```bash
+sudo stead host harden --apply --user ed --disable-password --confirm-key-login
+```
+
+This writes the managed drop-in after validation, but still does not reload sshd automatically.
 
 ## Undo
 

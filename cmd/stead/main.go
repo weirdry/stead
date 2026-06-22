@@ -166,6 +166,12 @@ func runHostHarden(args []string) error {
 			opts.DisablePassword = true
 		case "--dry-run":
 			opts.DryRun = true
+		case "--apply":
+			opts.Apply = true
+		case "--confirm-key-login":
+			opts.ConfirmKeyLogin = true
+		case "--force":
+			opts.Force = true
 		default:
 			printUsage(os.Stderr)
 			return fmt.Errorf("unknown host harden option %q", args[i])
@@ -442,7 +448,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host status [--effective]")
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
-	fmt.Fprintln(out, "  stead host harden --dry-run [--user name] [--disable-password]")
+	fmt.Fprintln(out, "  stead host harden (--dry-run|--apply) [--user name] [--disable-password] [--confirm-key-login|--force]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Client:")
 	fmt.Fprintln(out, "  stead client status")

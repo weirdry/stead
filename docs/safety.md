@@ -95,7 +95,11 @@ It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, la
 
 Host hardening is intentionally not automatic yet.
 
-`stead host harden` is currently dry-run only. It prints the proposed `/etc/ssh/sshd_config.d/stead.conf` content and refuses to run without `--dry-run`.
+`stead host harden --dry-run` prints the proposed `/etc/ssh/sshd_config.d/stead.conf` content without changing files.
+
+`stead host harden --apply` writes only the managed drop-in target. It validates a temporary candidate first, creates a timestamped backup when replacing an existing file, and does not reload sshd automatically.
+
+When password auth is disabled during apply, `stead` requires `--confirm-key-login` or `--force`.
 
 Current status output may warn about:
 
@@ -104,4 +108,4 @@ Current status output may warn about:
 - missing `AllowUsers` or `AllowGroups`
 - missing managed host config
 
-Those warnings are informational until the privileged apply path is implemented and reviewed.
+Those warnings are informational until you intentionally run the privileged apply path.

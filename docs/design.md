@@ -125,6 +125,7 @@ stead host install --user ed --tmux-session main
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead host harden --dry-run --user ed --disable-password
+sudo stead host harden --apply --user ed --disable-password --confirm-key-login
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
@@ -333,6 +334,8 @@ Before disabling password authentication:
 4. Require a successful key-auth test or explicit `--force`.
 5. Apply hardening.
 6. Print rollback instructions.
+
+`stead host harden --apply` writes only `/etc/ssh/sshd_config.d/stead.conf`, validates a temporary candidate before writing, creates a timestamped backup when replacing an existing target, and does not reload sshd automatically.
 
 `stead uninstall` must remove only what `stead` created.
 

@@ -1,6 +1,7 @@
 package hostharden
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ed/stead/internal/ui"
 )
@@ -18,16 +20,26 @@ type Options struct {
 	User            string
 	DisablePassword bool
 	DryRun          bool
+	Apply           bool
+	ConfirmKeyLogin bool
+	Force           bool
 	DropInPath      string
 	Out             io.Writer
+	Validate        Validator
+	Now             func() time.Time
 }
+
+type Validator func(path string) error
 
 func Run(opts Options) error {
 	if opts.Out == nil {
 		opts.Out = io.Discard
 	}
-	if !opts.DryRun {
-		return fmt.Errorf("host harden currently requires --dry-run")
+	if opts.DryRun == opts.Apply {
+		return fmt.Errorf("host harden requires exactly one of --dry-run or --apply")
+	}
+	if opts.DisablePassword && opts.Apply && !opts.ConfirmKeyLogin && !opts.Force {
+		return fmt.Errorf("--disable-password with --apply requires --confirm-key-login or --force")
 	}
 
 	loginUser, userSource, err := loginUser(opts.User)
@@ -44,7 +56,38 @@ func Run(opts Options) error {
 	}
 
 	config := Config(loginUser, opts.DisablePassword)
-	printPlan(opts.Out, path, loginUser, userSource, opts.DisablePassword, config)
+	if opts.DryRun {
+		printPlan(opts.Out, path, loginUser, userSource, opts.DisablePassword, config)
+		return nil
+	}
+	return apply(opts, path, loginUser, userSource, config)
+}
+
+type applyResult struct {
+	Action string
+	Backup string
+}
+
+func apply(opts Options, path, loginUser, userSource, config string) error {
+	validator := opts.Validate
+	if validator == nil {
+		validator = validateWithSSHD
+	}
+	now := opts.Now
+	if now == nil {
+		now = time.Now
+	}
+
+	if err := validateCandidate(filepath.Dir(path), []byte(config), validator); err != nil {
+		return err
+	}
+
+	result, err := writeDropIn(path, []byte(config), now)
+	if err != nil {
+		return err
+	}
+
+	printApply(opts.Out, path, loginUser, userSource, opts.DisablePassword, result)
 	return nil
 }
 
@@ -93,6 +136,110 @@ func printPlan(out io.Writer, path, loginUser, userSource string, disablePasswor
 	ui.PrintStep(out, 3, "Keep an existing local session open during any future apply")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "No files were modified.")
+}
+
+func printApply(out io.Writer, path, loginUser, userSource string, disablePassword bool, result applyResult) {
+	ui.PrintTitle(out, "Stead host harden")
+	fmt.Fprintln(out)
+	ui.PrintKV(out, "Mode", "apply")
+	ui.PrintKV(out, "Target", path)
+	ui.PrintKV(out, "Login user", loginUser+" ("+userSource+")")
+	if disablePassword {
+		ui.PrintKV(out, "Password auth", ui.StateDetail(out, "ok", "disabled in managed drop-in"))
+	} else {
+		ui.PrintKV(out, "Password auth", ui.StateDetail(out, "warn", "unchanged"))
+	}
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Changes")
+	ui.PrintKV(out, "Validation", ui.StateDetail(out, "ok", "candidate accepted by sshd -t"))
+	ui.PrintKV(out, "Action", result.Action)
+	if result.Backup != "" {
+		ui.PrintKV(out, "Backup", result.Backup)
+	}
+	fmt.Fprintln(out)
+
+	ui.PrintSection(out, "Next")
+	ui.PrintStep(out, 1, "Keep the current local session open")
+	ui.PrintStep(out, 2, "Test a new SSH login from the client")
+	ui.PrintStep(out, 3, "If needed, restore the backup or remove "+path)
+	fmt.Fprintln(out)
+	ui.PrintKV(out, "Reload", "not performed by stead")
+}
+
+func validateCandidate(dir string, content []byte, validator Validator) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(dir, ".stead-sshd-*.conf")
+	if err != nil {
+		return err
+	}
+	path := file.Name()
+	remove := true
+	defer func() {
+		if remove {
+			_ = os.Remove(path)
+		}
+	}()
+	if _, err := file.Write(content); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		return err
+	}
+	if err := validator(path); err != nil {
+		return fmt.Errorf("candidate sshd validation failed: %w", err)
+	}
+	return nil
+}
+
+func writeDropIn(path string, content []byte, now func() time.Time) (applyResult, error) {
+	if existing, err := os.ReadFile(path); err == nil {
+		if bytes.Equal(existing, content) {
+			return applyResult{Action: "no changes needed"}, nil
+		}
+		backup := backupPath(path, now())
+		if err := os.WriteFile(backup, existing, 0o644); err != nil {
+			return applyResult{}, err
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			return applyResult{}, err
+		}
+		return applyResult{Action: "replaced managed drop-in", Backup: backup}, nil
+	} else if !os.IsNotExist(err) {
+		return applyResult{}, err
+	}
+
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		return applyResult{}, err
+	}
+	return applyResult{Action: "created managed drop-in"}, nil
+}
+
+func backupPath(path string, t time.Time) string {
+	return path + ".stead-backup-" + t.UTC().Format("20060102T150405.000000000Z")
+}
+
+func validateWithSSHD(path string) error {
+	sshd, err := exec.LookPath("sshd")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(sshd, "-t", "-f", path)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg == "" {
+			return err
+		}
+		return fmt.Errorf("%s", msg)
+	}
+	return nil
 }
 
 func loginUser(explicit string) (string, string, error) {

@@ -94,10 +94,17 @@ Prints the host sshd hardening drop-in that `stead` would install.
 
 ```bash
 stead host harden --dry-run --user ed --disable-password
+sudo stead host harden --apply --user ed --disable-password --confirm-key-login
 stead host harden --dry-run
 ```
 
-This command is preview-only for now and requires `--dry-run`. It does not write `/etc/ssh/sshd_config.d/stead.conf`, validate sshd, reload services, or change Remote Login.
+`--dry-run` prints the proposed `/etc/ssh/sshd_config.d/stead.conf` without changing files.
+
+`--apply` writes the managed drop-in. It usually needs `sudo` for the default `/etc/ssh/sshd_config.d/stead.conf` target. Before writing the target, `stead` validates a temporary candidate with `sshd -t`. If an existing target is replaced, `stead` writes a timestamped backup next to it.
+
+`stead` does not reload sshd, restart services, or change Remote Login.
+
+When `--disable-password` is used with `--apply`, the command requires `--confirm-key-login` or `--force`.
 
 With `--disable-password`, the proposed drop-in includes:
 
