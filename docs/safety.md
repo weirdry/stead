@@ -101,6 +101,8 @@ Host hardening is intentionally not automatic yet.
 
 When password auth is disabled during apply, `stead` requires `--confirm-key-login` or `--force`.
 
+`stead host validate` is read-only. `stead host reload --dry-run` prints manual commands only and does not call `launchctl`.
+
 Current status output may warn about:
 
 - password authentication

@@ -173,6 +173,15 @@ sudo stead host harden --apply --user ed --disable-password --confirm-key-login
 
 This writes the managed drop-in after validation, but still does not reload sshd automatically.
 
+Plan the reload path:
+
+```bash
+stead host validate
+stead host reload --dry-run
+```
+
+Follow the printed manual commands only after keeping a local host session open and confirming client key login still works.
+
 ## Undo
 
 Remove the managed client SSH config block:

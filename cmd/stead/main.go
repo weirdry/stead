@@ -11,6 +11,7 @@ import (
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/hostharden"
+	"github.com/ed/stead/internal/hostops"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/setup"
 	"github.com/ed/stead/internal/status"
@@ -134,6 +135,12 @@ func runHost(args []string) error {
 	if len(args) >= 1 && args[0] == "harden" {
 		return runHostHarden(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "validate" {
+		return runHostValidate(args[1:])
+	}
+	if len(args) >= 1 && args[0] == "reload" {
+		return runHostReload(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
 }
@@ -178,6 +185,28 @@ func runHostHarden(args []string) error {
 		}
 	}
 	return hostharden.Run(opts)
+}
+
+func runHostValidate(args []string) error {
+	if len(args) != 0 {
+		printUsage(os.Stderr)
+		return fmt.Errorf("unknown host validate option %q", joinArgs(args))
+	}
+	return hostops.Validate(hostops.ValidateOptions{Out: os.Stdout})
+}
+
+func runHostReload(args []string) error {
+	opts := hostops.ReloadOptions{Out: os.Stdout}
+	for _, arg := range args {
+		switch arg {
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host reload option %q", arg)
+		}
+	}
+	return hostops.ReloadPlan(opts)
 }
 
 func runHostAuthorize(args []string) error {
@@ -449,6 +478,8 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host authorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host unauthorize --public-key key [--alias name] [--dry-run]")
 	fmt.Fprintln(out, "  stead host harden (--dry-run|--apply) [--user name] [--disable-password] [--confirm-key-login|--force]")
+	fmt.Fprintln(out, "  stead host validate")
+	fmt.Fprintln(out, "  stead host reload --dry-run")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Client:")
 	fmt.Fprintln(out, "  stead client status")

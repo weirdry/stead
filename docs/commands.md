@@ -118,6 +118,26 @@ AllowUsers ed
 
 Without `--disable-password`, password-style SSH authentication is left unchanged in the preview.
 
+### `stead host validate`
+
+Runs read-only host validation.
+
+```bash
+stead host validate
+```
+
+This checks the expected sshd files and runs `sshd -t` without sudo. On macOS it may report that root-readable host keys are required; in that case, run the shown sudo validation manually if you want a privileged validation result.
+
+### `stead host reload`
+
+Prints the manual reload plan.
+
+```bash
+stead host reload --dry-run
+```
+
+This command is planning-only for now and refuses to run without `--dry-run`. It does not call `launchctl`, reload sshd, restart services, or change Remote Login.
+
 ## Client
 
 ### `stead client status`
