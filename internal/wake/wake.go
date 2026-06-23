@@ -135,7 +135,8 @@ func Run(opts Options) error {
 	if reachable {
 		ui.PrintStep(out, 1, "stead connect --alias "+alias)
 	} else if wakeReady(host.Wake) {
-		ui.PrintStep(out, 1, "future wake apply will send Wake-on-LAN, wait for SSH, then connect")
+		ui.PrintStep(out, 1, "stead wake --alias "+alias)
+		ui.PrintStep(out, 2, "stead connect --alias "+alias+" --wake")
 	} else {
 		ui.PrintStep(out, 1, "configure hosts."+alias+".wake before sending Wake-on-LAN")
 	}

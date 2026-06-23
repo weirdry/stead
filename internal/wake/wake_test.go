@@ -72,7 +72,8 @@ func TestRunDryRunReportsUnreachable(t *testing.T) {
 	for _, want := range []string{
 		"unreachable",
 		"connection refused",
-		"future wake apply will send Wake-on-LAN",
+		"stead wake --alias devmac",
+		"stead connect --alias devmac --wake",
 	} {
 		if !strings.Contains(buf.String(), want) {
 			t.Fatalf("output missing %q:\n%s", want, buf.String())
