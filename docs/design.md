@@ -85,6 +85,7 @@ stead verify --alias devmac
 stead connect --alias devmac
 stead wake --alias devmac --dry-run
 stead wake --alias devmac
+stead connect --alias devmac --wake
 stead config path
 stead config show
 stead config init
@@ -116,8 +117,6 @@ stead doctor
 stead host install
 stead host uninstall
 stead client uninstall
-stead wake --alias devmac
-stead connect --alias devmac --wake
 ```
 
 Example flags:
@@ -253,7 +252,7 @@ This keeps SSH transparent and leaves authentication to OpenSSH.
 
 ## Wake Flow
 
-Client mode may support an optional wake flow:
+Client mode supports an optional wake flow:
 
 ```bash
 stead wake --alias devmac
@@ -262,7 +261,7 @@ stead connect --alias devmac --wake
 
 The wake flow should:
 
-- Send a Wake-on-LAN magic packet if a MAC address is configured.
+- Send a Wake-on-LAN magic packet if the SSH port is not already reachable and a MAC address is configured.
 - Wait for the target SSH TCP port to become reachable.
 - Then exec the normal system `ssh` command for connect flows.
 - Never replace or participate in SSH authentication.
@@ -299,7 +298,7 @@ stead connect --alias devmac --wake
   -> exec system ssh using the configured alias
 ```
 
-If no MAC address is configured, `stead wake` may skip packet sending and only wait for reachability.
+If no MAC address is configured, `stead wake` can still report reachability, but apply mode requires complete wake config before sending a packet to an unreachable host.
 
 ## Session Continuity
 

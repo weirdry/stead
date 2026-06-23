@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/wake"
 )
 
 func TestRunExecsSystemSSHForConfiguredAlias(t *testing.T) {
@@ -70,6 +71,74 @@ func TestRunUsesDefaultAlias(t *testing.T) {
 	}
 	if len(gotArgv) != 2 || gotArgv[1] != "devmac" {
 		t.Fatalf("argv = %#v", gotArgv)
+	}
+}
+
+func TestRunWakesBeforeExec(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath, sshConfigPath := writeFixture(t, dir)
+	var calls []string
+	var gotWake wake.Options
+	var gotArgv []string
+
+	err := Run(Options{
+		Alias:         "devmac",
+		ConfigPath:    cfgPath,
+		SSHConfigPath: sshConfigPath,
+		Wake:          true,
+		Out:           &bytes.Buffer{},
+		WakeRun: func(opts wake.Options) error {
+			calls = append(calls, "wake")
+			gotWake = opts
+			return nil
+		},
+		Exec: func(path string, argv []string, env []string) error {
+			calls = append(calls, "exec")
+			gotArgv = append([]string(nil), argv...)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if strings.Join(calls, ",") != "wake,exec" {
+		t.Fatalf("calls = %#v, want wake before exec", calls)
+	}
+	if gotWake.Alias != "devmac" {
+		t.Fatalf("wake alias = %q, want devmac", gotWake.Alias)
+	}
+	if gotWake.ConfigPath != cfgPath {
+		t.Fatalf("wake config path = %q, want %q", gotWake.ConfigPath, cfgPath)
+	}
+	if gotWake.Out == nil {
+		t.Fatal("wake output writer is nil")
+	}
+	if len(gotArgv) != 2 || gotArgv[1] != "devmac" {
+		t.Fatalf("argv = %#v", gotArgv)
+	}
+}
+
+func TestRunWakeErrorPreventsExec(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath, sshConfigPath := writeFixture(t, dir)
+	wantErr := os.ErrPermission
+
+	err := Run(Options{
+		Alias:         "devmac",
+		ConfigPath:    cfgPath,
+		SSHConfigPath: sshConfigPath,
+		Wake:          true,
+		Out:           &bytes.Buffer{},
+		WakeRun: func(opts wake.Options) error {
+			return wantErr
+		},
+		Exec: func(path string, argv []string, env []string) error {
+			t.Fatal("exec should not be called")
+			return nil
+		},
+	})
+	if err != wantErr {
+		t.Fatalf("error = %v, want %v", err, wantErr)
 	}
 }
 

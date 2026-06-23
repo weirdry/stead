@@ -109,9 +109,9 @@ This does not enable or configure Tailscale SSH.
 
 ## `[hosts.<alias>.wake]`
 
-Wake settings are reserved for the future wake/connect flow.
+Wake settings control the optional Wake-on-LAN flow used by `stead wake` and `stead connect --wake`.
 
-Current setup/status commands can show whether these fields are placeholders, but wake execution is not implemented yet.
+If the target SSH port is already reachable, no Wake-on-LAN packet is sent. If the target is not reachable, apply mode requires a real `mac_address` and `broadcast` before sending a packet.
 
 ### `mac_address`
 
@@ -123,11 +123,11 @@ LAN broadcast address for Wake-on-LAN.
 
 ### `timeout`
 
-How long a future wake flow should wait for SSH reachability.
+How long the wake flow should wait for SSH reachability.
 
 ### `interval`
 
-How often a future wake flow should poll SSH reachability.
+How often the wake flow should poll SSH reachability.
 
 ## `[hosts.<alias>.session]`
 

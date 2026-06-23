@@ -154,6 +154,7 @@ ssh devmac
 stead connect --alias devmac
 stead wake --alias devmac --dry-run
 stead wake --alias devmac
+stead connect --alias devmac --wake
 ```
 
 The actual SSH transport and authentication are still handled by the system `ssh` command and macOS `sshd`.

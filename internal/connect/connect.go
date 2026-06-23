@@ -11,17 +11,21 @@ import (
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/sshconfig"
 	"github.com/ed/stead/internal/ui"
+	"github.com/ed/stead/internal/wake"
 )
 
 type Options struct {
 	Alias         string
 	ConfigPath    string
 	SSHConfigPath string
+	Wake          bool
 	Out           io.Writer
 	Exec          ExecFunc
+	WakeRun       WakeFunc
 }
 
 type ExecFunc func(path string, argv []string, env []string) error
+type WakeFunc func(wake.Options) error
 
 func Run(opts Options) error {
 	out := opts.Out
@@ -55,6 +59,21 @@ func Run(opts Options) error {
 	aliasStatus := sshconfig.CheckAlias(sshCfg, alias)
 	if aliasStatus.State != "ok" {
 		return fmt.Errorf("ssh alias %q is %s; run stead client apply --alias %s", alias, aliasStatus.State, alias)
+	}
+
+	if opts.Wake {
+		wakeRun := opts.WakeRun
+		if wakeRun == nil {
+			wakeRun = wake.Run
+		}
+		if err := wakeRun(wake.Options{
+			Alias:      alias,
+			ConfigPath: opts.ConfigPath,
+			Out:        out,
+		}); err != nil {
+			return err
+		}
+		fmt.Fprintln(out)
 	}
 
 	sshPath, err := exec.LookPath("ssh")

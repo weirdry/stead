@@ -107,6 +107,8 @@ When password auth is disabled during apply, `stead` requires `--confirm-key-log
 
 `stead connect` execs the system `ssh` command for a configured alias. It does not replace SSH authentication, store credentials, or use Tailscale SSH.
 
+`stead connect --wake` runs the same wake flow first, then execs the system `ssh` command. It still does not replace SSH authentication, store credentials, or use Tailscale SSH.
+
 `stead wake --dry-run` checks TCP reachability and wake configuration only. It does not send Wake-on-LAN packets or run SSH authentication.
 
 `stead wake` sends a Wake-on-LAN packet only when SSH is not already reachable and wake MAC/broadcast config is complete. It does not run SSH authentication.

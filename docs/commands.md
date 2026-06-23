@@ -59,6 +59,7 @@ Execs the normal system SSH client for a configured alias.
 
 ```bash
 stead connect --alias devmac
+stead connect --alias devmac --wake
 stead connect
 ```
 
@@ -69,6 +70,8 @@ This command does not replace SSH authentication, does not use Tailscale SSH, an
 ```bash
 ssh <alias>
 ```
+
+With `--wake`, `stead` runs the wake flow first, then execs `ssh <alias>`. If the SSH port is already reachable, no Wake-on-LAN packet is sent.
 
 ### `stead wake`
 

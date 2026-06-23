@@ -83,6 +83,8 @@ func runConnect(args []string) error {
 			}
 			opts.Alias = args[i+1]
 			i++
+		case "--wake":
+			opts.Wake = true
 		default:
 			printUsage(os.Stderr)
 			return fmt.Errorf("unknown connect option %q", args[i])
@@ -534,7 +536,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
-	fmt.Fprintln(out, "  stead connect [--alias name]")
+	fmt.Fprintln(out, "  stead connect [--alias name] [--wake]")
 	fmt.Fprintln(out, "  stead wake [--dry-run] [--alias name] [--timeout 90s]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
