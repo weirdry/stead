@@ -172,6 +172,34 @@ Without `--disable-password`, password-style SSH authentication is left unchange
 sudo stead host reload --apply --confirm
 ```
 
+### `stead host install`
+
+Installs the managed tmux auto-attach block in the host user's shell config.
+
+```bash
+stead host install --dry-run
+stead host install --dry-run --tmux-session main
+stead host install --apply --tmux-session main
+stead host install --dry-run --force
+```
+
+The default target is `~/.zshrc`. Use `--shell-config path` for tests or unusual shell layouts.
+
+The managed block runs only for interactive SSH sessions, only when `tmux` exists, and only when not already inside tmux. It does not change SSH authentication, sshd config, Tailscale, launchd, or firewall settings.
+
+If an unmanaged custom tmux auto-attach snippet is already present, `stead` leaves it alone unless `--force` is passed.
+
+### `stead host uninstall`
+
+Removes only the managed tmux auto-attach block from the host user's shell config.
+
+```bash
+stead host uninstall --dry-run
+stead host uninstall --apply --confirm
+```
+
+It preserves unrelated shell config content and creates a timestamped backup when it changes the file.
+
 ### `stead host validate`
 
 Runs read-only host validation.

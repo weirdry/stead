@@ -143,7 +143,7 @@ Session settings describe desired login ergonomics.
 
 Whether tmux session continuity is desired.
 
-Current commands inspect tmux availability and config. Host-side tmux installation is not implemented yet.
+`stead host install` can install a managed tmux auto-attach block for SSH sessions.
 
 ### `tmux_session`
 

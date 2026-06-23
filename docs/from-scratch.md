@@ -192,6 +192,20 @@ Apply the reload only after keeping a local host session open and confirming cli
 sudo stead host reload --apply --confirm
 ```
 
+## 10. Optional Host Session Continuity
+
+Preview the managed tmux auto-attach block on the host:
+
+```bash
+stead host install --dry-run --tmux-session main
+```
+
+Apply only if the preview looks right:
+
+```bash
+stead host install --apply --tmux-session main
+```
+
 ## Undo
 
 Remove the managed client SSH config block:
@@ -214,6 +228,13 @@ Remove host hardening:
 stead host harden --unapply --dry-run
 sudo stead host harden --unapply --apply --confirm
 sudo stead host reload --apply --confirm
+```
+
+Remove the managed host tmux auto-attach block:
+
+```bash
+stead host uninstall --dry-run
+stead host uninstall --apply --confirm
 ```
 
 Uninstall only the `stead` binary:

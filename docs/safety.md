@@ -91,6 +91,14 @@ It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, la
 
 `./uninstall.sh` removes only the installed binary. It does not remove config, keys, managed SSH blocks, or authorized keys.
 
+## Host Session Install
+
+`stead host install --dry-run` previews the managed tmux auto-attach block for the current user's shell config.
+
+`stead host install --apply` edits only the target shell config, defaulting to `~/.zshrc`. It creates a timestamped backup when modifying an existing file. It does not change SSH authentication, sshd config, Remote Login, Tailscale, launchd, firewall, keys, or authorized keys.
+
+`stead host uninstall --apply --confirm` removes only the managed tmux auto-attach block. It does not remove custom shell snippets.
+
 ## Host Hardening
 
 Host hardening is intentionally not automatic yet.

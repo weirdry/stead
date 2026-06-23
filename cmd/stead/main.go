@@ -13,6 +13,7 @@ import (
 	"github.com/ed/stead/internal/connect"
 	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/hostharden"
+	"github.com/ed/stead/internal/hostinstall"
 	"github.com/ed/stead/internal/hostops"
 	"github.com/ed/stead/internal/plan"
 	"github.com/ed/stead/internal/setup"
@@ -198,6 +199,12 @@ func runHost(args []string) error {
 	if len(args) >= 1 && args[0] == "reload" {
 		return runHostReload(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "install" {
+		return runHostInstall(args[1:])
+	}
+	if len(args) >= 1 && args[0] == "uninstall" {
+		return runHostUninstall(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown host command %q", joinArgs(args))
 }
@@ -272,6 +279,60 @@ func runHostReload(args []string) error {
 		}
 	}
 	return hostops.Reload(opts)
+}
+
+func runHostInstall(args []string) error {
+	opts := hostinstall.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--dry-run":
+			opts.DryRun = true
+		case "--apply":
+			opts.Apply = true
+		case "--tmux-session":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--tmux-session requires a value")
+			}
+			opts.TmuxSession = args[i+1]
+			i++
+		case "--shell-config":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--shell-config requires a value")
+			}
+			opts.ShellConfigPath = args[i+1]
+			i++
+		case "--force":
+			opts.Force = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host install option %q", args[i])
+		}
+	}
+	return hostinstall.Run(opts)
+}
+
+func runHostUninstall(args []string) error {
+	opts := hostinstall.Options{Out: os.Stdout, Uninstall: true}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--dry-run":
+			opts.DryRun = true
+		case "--apply":
+			opts.Apply = true
+		case "--confirm":
+			opts.Confirm = true
+		case "--shell-config":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--shell-config requires a value")
+			}
+			opts.ShellConfigPath = args[i+1]
+			i++
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown host uninstall option %q", args[i])
+		}
+	}
+	return hostinstall.Run(opts)
 }
 
 func runHostAuthorize(args []string) error {
@@ -595,6 +656,8 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead host harden --unapply (--dry-run|--apply) [--confirm]")
 	fmt.Fprintln(out, "  stead host validate")
 	fmt.Fprintln(out, "  stead host reload (--dry-run|--apply) [--confirm]")
+	fmt.Fprintln(out, "  stead host install (--dry-run|--apply) [--tmux-session name] [--shell-config path] [--force]")
+	fmt.Fprintln(out, "  stead host uninstall (--dry-run|--apply) [--shell-config path] [--confirm]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Client:")
 	fmt.Fprintln(out, "  stead client status")

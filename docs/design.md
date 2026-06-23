@@ -107,6 +107,10 @@ stead client plan --alias devmac
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 stead client unapply --alias devmac --dry-run
+stead host install --dry-run --tmux-session main
+stead host install --apply --tmux-session main
+stead host uninstall --dry-run
+stead host uninstall --apply --confirm
 ```
 
 ## Future CLI
@@ -115,15 +119,12 @@ The following commands remain design targets and are not implemented yet:
 
 ```bash
 stead doctor
-stead host install
-stead host uninstall
 stead client uninstall
 ```
 
 Example flags:
 
 ```bash
-stead host install --user ed --tmux-session main
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
 stead host harden --dry-run --user ed --disable-password
@@ -133,6 +134,10 @@ sudo stead host harden --unapply --apply --confirm
 stead host validate
 stead host reload --dry-run
 sudo stead host reload --apply --confirm
+stead host install --dry-run --tmux-session main
+stead host install --apply --tmux-session main
+stead host uninstall --dry-run
+stead host uninstall --apply --confirm
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
