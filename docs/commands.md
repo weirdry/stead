@@ -99,6 +99,18 @@ stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast
 
 This command edits only `~/.config/stead/config.toml`. It does not touch `~/.ssh/config`, generate keys, run SSH, send Wake-on-LAN packets, or use Tailscale SSH.
 
+### `stead doctor`
+
+Prints a concise read-only diagnosis and suggested next commands for an alias.
+
+```bash
+stead doctor
+stead doctor --alias devmac
+stead doctor --alias devmac --verify
+```
+
+Without `--verify`, `doctor` does not attempt SSH login. With `--verify`, it runs the same BatchMode OpenSSH login check as `stead verify`.
+
 ## Host
 
 ### `stead host status`

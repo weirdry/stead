@@ -123,6 +123,8 @@ When password auth is disabled during apply, `stead` requires `--confirm-key-log
 
 `stead client wake-config` updates only the local Stead config wake fields for an existing alias. It does not send network packets, edit SSH config, generate keys, or use Tailscale SSH.
 
+`stead doctor` is read-only. It does not attempt SSH login unless `--verify` is passed.
+
 Current status output may warn about:
 
 - password authentication

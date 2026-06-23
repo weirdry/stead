@@ -82,6 +82,8 @@ stead --no-color status
 stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
+stead doctor --alias devmac
+stead doctor --alias devmac --verify
 stead connect --alias devmac
 stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
 stead wake --alias devmac --dry-run
@@ -118,7 +120,6 @@ stead host uninstall --apply --confirm
 The following commands remain design targets and are not implemented yet:
 
 ```bash
-stead doctor
 stead client uninstall
 ```
 

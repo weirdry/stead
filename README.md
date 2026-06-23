@@ -63,6 +63,8 @@ stead status
 stead host status
 stead host status --effective
 stead client status
+stead doctor
+stead doctor --alias devmac --verify
 
 stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify

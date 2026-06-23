@@ -11,6 +11,7 @@ import (
 	"github.com/ed/stead/internal/clientwake"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/connect"
+	"github.com/ed/stead/internal/doctor"
 	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/hostharden"
 	"github.com/ed/stead/internal/hostinstall"
@@ -48,6 +49,8 @@ func run(args []string) error {
 		return runConnect(args[1:])
 	case "wake":
 		return runWake(args[1:])
+	case "doctor":
+		return runDoctor(args[1:])
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -123,6 +126,26 @@ func runWake(args []string) error {
 		}
 	}
 	return wake.Run(opts)
+}
+
+func runDoctor(args []string) error {
+	opts := doctor.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--verify":
+			opts.Verify = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown doctor option %q", args[i])
+		}
+	}
+	return doctor.Run(opts)
 }
 
 func runSetup(args []string) error {
@@ -647,6 +670,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead connect [--alias name] [--wake]")
 	fmt.Fprintln(out, "  stead wake [--dry-run] [--alias name] [--timeout 90s]")
+	fmt.Fprintln(out, "  stead doctor [--alias name] [--verify]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
 	fmt.Fprintln(out, "  stead host status [--effective]")

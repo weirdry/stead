@@ -137,6 +137,7 @@ You can also run:
 
 ```bash
 stead setup --alias devmac --dry-run --verify
+stead doctor --alias devmac
 ```
 
 When everything is complete, it should report SSH login as OK and suggest:
