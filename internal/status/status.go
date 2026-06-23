@@ -148,7 +148,7 @@ func printCombined(out io.Writer, s snapshot) {
 	printSystem(out, s)
 	printHostSections(out, s)
 	printClientSections(out, s)
-	printStead(out, s)
+	printStead(out, s, steadDetailFull)
 }
 
 func printHost(out io.Writer, s snapshot) {
@@ -157,7 +157,7 @@ func printHost(out io.Writer, s snapshot) {
 
 	printSystem(out, s)
 	printHostSections(out, s)
-	printStead(out, s)
+	printStead(out, s, steadDetailHost)
 }
 
 func printClient(out io.Writer, s snapshot) {
@@ -166,7 +166,7 @@ func printClient(out io.Writer, s snapshot) {
 
 	printSystem(out, s)
 	printClientSections(out, s)
-	printStead(out, s)
+	printStead(out, s, steadDetailFull)
 }
 
 func printSystem(out io.Writer, s snapshot) {
@@ -257,26 +257,39 @@ func printClientSections(out io.Writer, s snapshot) {
 	fmt.Fprintln(out)
 }
 
-func printStead(out io.Writer, s snapshot) {
+type steadDetailMode int
+
+const (
+	steadDetailFull steadDetailMode = iota
+	steadDetailHost
+)
+
+func printStead(out io.Writer, s snapshot, mode steadDetailMode) {
 	printSection(out, "Stead")
 	printValue(out, "Config path", s.ConfigPath)
 	printCheck(out, "Config", s.Config)
 	if s.Config.State == "ok" {
 		printValue(out, "Default alias", value(s.ConfigAlias))
-		if len(s.ConfigHosts) == 0 {
+		if mode == steadDetailHost {
+			printValue(out, "Host config", "local host checks use system SSH files")
+		} else if len(s.ConfigHosts) == 0 {
 			printValue(out, "Configured hosts", "none")
 		} else {
-			printValue(out, "Configured hosts", "")
-			for _, host := range s.ConfigHosts {
-				detail := host.State
-				if len(host.Findings) > 0 {
-					detail += " (" + strings.Join(host.Findings, ", ") + ")"
-				}
-				printSubValue(out, host.Alias, colorStatePrefix(out, detail, host.State))
-			}
+			printConfiguredHosts(out, s.ConfigHosts)
 		}
 	}
 	printValue(out, "Mode", "read-only status")
+}
+
+func printConfiguredHosts(out io.Writer, hosts []config.HostStatus) {
+	printValue(out, "Configured hosts", "")
+	for _, host := range hosts {
+		detail := host.State
+		if len(host.Findings) > 0 {
+			detail += " (" + strings.Join(host.Findings, ", ") + ")"
+		}
+		printSubValue(out, host.Alias, colorStatePrefix(out, detail, host.State))
+	}
 }
 
 func printCheck(out io.Writer, label string, c check) {

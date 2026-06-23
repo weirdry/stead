@@ -1,8 +1,12 @@
 package status
 
 import (
+	"bytes"
 	"errors"
+	"strings"
 	"testing"
+
+	"github.com/ed/stead/internal/config"
 )
 
 func TestFormatConfigLineNormalizesWhitespace(t *testing.T) {
@@ -75,5 +79,46 @@ func TestEffectiveSSHDErrorExplainsMacOSHostKeyAccess(t *testing.T) {
 	want := "sshd -T needs root-readable host keys on this macOS; no sudo attempted"
 	if got != want {
 		t.Fatalf("effectiveSSHDError = %q, want %q", got, want)
+	}
+}
+
+func TestPrintSteadHostModeSuppressesConfiguredHostReadiness(t *testing.T) {
+	var buf bytes.Buffer
+	printStead(&buf, snapshot{
+		ConfigPath:  "/tmp/config.toml",
+		Config:      check{State: "ok", Detail: "/tmp/config.toml"},
+		ConfigAlias: "devmac",
+		ConfigHosts: []config.HostStatus{{
+			Alias:    "devmac",
+			State:    "incomplete",
+			Findings: []string{"hostname placeholder"},
+		}},
+	}, steadDetailHost)
+
+	out := buf.String()
+	if strings.Contains(out, "Configured hosts") || strings.Contains(out, "hostname placeholder") {
+		t.Fatalf("host mode should not show client host readiness:\n%s", out)
+	}
+	if !strings.Contains(out, "Host config:") || !strings.Contains(out, "local host checks use system SSH files") {
+		t.Fatalf("host mode missing host config note:\n%s", out)
+	}
+}
+
+func TestPrintSteadFullModeShowsConfiguredHostReadiness(t *testing.T) {
+	var buf bytes.Buffer
+	printStead(&buf, snapshot{
+		ConfigPath:  "/tmp/config.toml",
+		Config:      check{State: "ok", Detail: "/tmp/config.toml"},
+		ConfigAlias: "devmac",
+		ConfigHosts: []config.HostStatus{{
+			Alias:    "devmac",
+			State:    "incomplete",
+			Findings: []string{"hostname placeholder"},
+		}},
+	}, steadDetailFull)
+
+	out := buf.String()
+	if !strings.Contains(out, "Configured hosts") || !strings.Contains(out, "hostname placeholder") {
+		t.Fatalf("full mode should show configured host readiness:\n%s", out)
 	}
 }
