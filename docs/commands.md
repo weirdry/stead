@@ -72,14 +72,17 @@ ssh <alias>
 
 ### `stead wake`
 
-Checks wake readiness without sending a Wake-on-LAN packet.
+Checks wake readiness or sends a Wake-on-LAN packet.
 
 ```bash
 stead wake --alias devmac --dry-run
 stead wake --alias devmac --dry-run --timeout 5s
+stead wake --alias devmac
 ```
 
 The dry run loads the configured hostname and SSH port, checks whether the TCP port is reachable, and reports whether `mac_address` and `broadcast` are configured. It does not send a Wake-on-LAN packet and does not run SSH authentication.
+
+Without `--dry-run`, if the SSH port is already reachable, `stead` exits without sending a packet. If it is not reachable, `stead` requires `mac_address` and `broadcast`, sends one Wake-on-LAN magic packet, and waits for the SSH port until the configured timeout. It still does not perform SSH authentication.
 
 ## Host
 

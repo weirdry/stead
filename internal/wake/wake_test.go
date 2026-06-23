@@ -106,9 +106,96 @@ func TestRunDryRunReportsMissingWakeConfig(t *testing.T) {
 }
 
 func TestRunRequiresDryRun(t *testing.T) {
-	err := Run(Options{Out: &bytes.Buffer{}})
+	cfgPath := writeWakeFixture(t, t.TempDir(), config.Wake{})
+	err := Run(Options{
+		ConfigPath: cfgPath,
+		Out:        &bytes.Buffer{},
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			return nil, errors.New("offline")
+		},
+	})
 	if err == nil {
-		t.Fatal("expected dry-run error")
+		t.Fatal("expected wake config error")
+	}
+}
+
+func TestRunApplySkipsPacketWhenReachable(t *testing.T) {
+	cfgPath := writeWakeFixture(t, t.TempDir(), config.Wake{
+		MACAddress: validTestMAC(),
+		Broadcast:  "configured-broadcast-address",
+	})
+	var sent bool
+	var buf bytes.Buffer
+	err := Run(Options{
+		Alias:      "devmac",
+		ConfigPath: cfgPath,
+		Out:        &buf,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			return noopConn{}, nil
+		},
+		Send: func(network, address string, payload []byte) error {
+			sent = true
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if sent {
+		t.Fatal("wake packet sent even though SSH was reachable")
+	}
+	if !strings.Contains(buf.String(), "skipped; SSH already reachable") {
+		t.Fatalf("output missing skip:\n%s", buf.String())
+	}
+}
+
+func TestRunApplySendsPacketAndWaits(t *testing.T) {
+	cfgPath := writeWakeFixture(t, t.TempDir(), config.Wake{
+		MACAddress: validTestMAC(),
+		Broadcast:  "192.0.2.255",
+		Timeout:    "20ms",
+		Interval:   "1ms",
+	})
+	var dialCount int
+	var sendAddress string
+	var payloadLen int
+	var buf bytes.Buffer
+	err := Run(Options{
+		Alias:      "devmac",
+		ConfigPath: cfgPath,
+		Out:        &buf,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			dialCount++
+			if dialCount == 1 {
+				return nil, errors.New("offline")
+			}
+			return noopConn{}, nil
+		},
+		Send: func(network, address string, payload []byte) error {
+			sendAddress = address
+			payloadLen = len(payload)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if sendAddress != "192.0.2.255:9" {
+		t.Fatalf("send address = %q", sendAddress)
+	}
+	if payloadLen != 102 {
+		t.Fatalf("payload length = %d, want 102", payloadLen)
+	}
+	for _, want := range []string{
+		"Wake-on-LAN:",
+		"packet sent",
+		"SSH port:",
+		"reachable",
+		"stead connect --alias devmac",
+	} {
+		if !strings.Contains(buf.String(), want) {
+			t.Fatalf("output missing %q:\n%s", want, buf.String())
+		}
 	}
 }
 
@@ -151,6 +238,10 @@ func baseConfig(wake config.Wake) *config.Config {
 			},
 		},
 	}
+}
+
+func validTestMAC() string {
+	return strings.Join([]string{"02", "00", "00", "00", "00", "01"}, ":")
 }
 
 type noopConn struct{}

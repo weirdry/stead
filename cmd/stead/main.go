@@ -535,7 +535,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead connect [--alias name]")
-	fmt.Fprintln(out, "  stead wake --dry-run [--alias name] [--timeout 3s]")
+	fmt.Fprintln(out, "  stead wake [--dry-run] [--alias name] [--timeout 90s]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
 	fmt.Fprintln(out, "  stead host status [--effective]")

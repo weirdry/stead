@@ -84,6 +84,7 @@ stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
 stead connect --alias devmac
 stead wake --alias devmac --dry-run
+stead wake --alias devmac
 stead config path
 stead config show
 stead config init

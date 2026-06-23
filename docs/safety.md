@@ -109,6 +109,8 @@ When password auth is disabled during apply, `stead` requires `--confirm-key-log
 
 `stead wake --dry-run` checks TCP reachability and wake configuration only. It does not send Wake-on-LAN packets or run SSH authentication.
 
+`stead wake` sends a Wake-on-LAN packet only when SSH is not already reachable and wake MAC/broadcast config is complete. It does not run SSH authentication.
+
 Current status output may warn about:
 
 - password authentication
