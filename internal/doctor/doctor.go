@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,6 +83,7 @@ func collect(opts Options) (report, error) {
 		return r, nil
 	}
 	r.Items = append(r.Items, item{"Configured host", hostState(host), hostDetail(host)})
+	locality := targetLocality(host.Hostname)
 
 	keyState, keyDetail := keyStatus(host.IdentityFile)
 	r.Items = append(r.Items, item{"Client key", keyState, keyDetail})
@@ -106,17 +108,22 @@ func collect(opts Options) (report, error) {
 		r.Steps = append(r.Steps, "stead client wake-config --alias "+alias+" --mac-address <host-lan-mac> --broadcast <lan-broadcast>")
 	}
 
-	hardenState, hardenDetail := fileStatus(hostharden.DefaultDropInPath)
-	r.Items = append(r.Items, item{"Host hardening", hardenState, hardenDetail})
-	if hardenState != "ok" && host.User != "" {
-		r.Steps = append(r.Steps, "stead host harden --dry-run --user "+shellQuote(host.User)+" --disable-password")
-	}
+	if locality == "remote" {
+		r.Items = append(r.Items, item{"Host hardening", "unknown", "remote host; run doctor on host"})
+		r.Items = append(r.Items, item{"tmux auto-attach", "unknown", "remote host; run doctor on host"})
+	} else {
+		hardenState, hardenDetail := fileStatus(hostharden.DefaultDropInPath)
+		r.Items = append(r.Items, item{"Host hardening", hardenState, hardenDetail})
+		if hardenState != "ok" && host.User != "" {
+			r.Steps = append(r.Steps, "stead host harden --dry-run --user "+shellQuote(host.User)+" --disable-password")
+		}
 
-	tmuxState, tmuxDetail := tmuxAutoAttachStatus(defaultZshrcPath())
-	r.Items = append(r.Items, item{"tmux auto-attach", tmuxState, tmuxDetail})
-	if tmuxState == "missing" && host.Session.Tmux {
-		session := valueOrDefault(host.Session.TmuxSession, "main")
-		r.Steps = append(r.Steps, "stead host install --dry-run --tmux-session "+shellQuote(session))
+		tmuxState, tmuxDetail := tmuxAutoAttachStatus(defaultZshrcPath())
+		r.Items = append(r.Items, item{"tmux auto-attach", tmuxState, tmuxDetail})
+		if tmuxState == "missing" && host.Session.Tmux {
+			session := valueOrDefault(host.Session.TmuxSession, "main")
+			r.Steps = append(r.Steps, "stead host install --dry-run --tmux-session "+shellQuote(session))
+		}
 	}
 
 	if opts.Verify {
@@ -313,8 +320,12 @@ func verifyLogin(alias string, runner verify.Runner) (string, string) {
 func ready(items []item) bool {
 	for _, item := range items {
 		switch item.Label {
-		case "Configured host", "Client key", "SSH alias", "Host hardening", "tmux auto-attach":
+		case "Configured host", "Client key", "SSH alias":
 			if item.State != "ok" {
+				return false
+			}
+		case "Host hardening", "tmux auto-attach":
+			if item.State != "ok" && item.State != "unknown" {
 				return false
 			}
 		case "SSH login":
@@ -324,6 +335,37 @@ func ready(items []item) bool {
 		}
 	}
 	return true
+}
+
+func targetLocality(hostname string) string {
+	hostname = strings.TrimSpace(hostname)
+	if hostname == "" || isPlaceholder(hostname) {
+		return "unknown"
+	}
+	ip := net.ParseIP(hostname)
+	if ip == nil {
+		return "unknown"
+	}
+	if ip.IsLoopback() {
+		return "local"
+	}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "unknown"
+	}
+	for _, addr := range addrs {
+		var localIP net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			localIP = v.IP
+		case *net.IPAddr:
+			localIP = v.IP
+		}
+		if localIP != nil && localIP.Equal(ip) {
+			return "local"
+		}
+	}
+	return "remote"
 }
 
 func expandHome(path string) (string, error) {

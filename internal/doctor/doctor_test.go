@@ -91,6 +91,42 @@ func TestRunSuggestsClientApplyForMissingSSHAlias(t *testing.T) {
 	}
 }
 
+func TestRunSkipsLocalHostChecksForRemoteIPTarget(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath, sshConfigPath := writeFixture(t, dir, "devmac")
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	cfg.Hosts["devmac"].Hostname = "192.0.2.44"
+	if err := config.Save(cfgPath, cfg); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+	var buf bytes.Buffer
+	err = Run(Options{
+		Alias:         "devmac",
+		ConfigPath:    cfgPath,
+		SSHConfigPath: sshConfigPath,
+		Out:           &buf,
+	})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"Host hardening:",
+		"remote host; run doctor on host",
+		"tmux auto-attach:",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "stead host harden --dry-run") {
+		t.Fatalf("client-side doctor should not suggest local host hardening for remote target:\n%s", out)
+	}
+}
+
 func TestRunVerifyReportsSuccess(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath, sshConfigPath := writeFixture(t, dir, "devmac")

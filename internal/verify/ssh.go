@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/ed/stead/internal/ui"
@@ -69,5 +70,16 @@ func Run(opts Options) error {
 
 func SSHRunner(ctx context.Context, alias string) error {
 	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", alias, "true")
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	msg := strings.TrimSpace(string(output))
+	if msg == "" {
+		return err
+	}
+	if len(msg) > 200 {
+		msg = msg[:200] + "..."
+	}
+	return fmt.Errorf("%w: %s", err, msg)
 }
