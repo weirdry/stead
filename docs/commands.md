@@ -70,6 +70,17 @@ This command does not replace SSH authentication, does not use Tailscale SSH, an
 ssh <alias>
 ```
 
+### `stead wake`
+
+Checks wake readiness without sending a Wake-on-LAN packet.
+
+```bash
+stead wake --alias devmac --dry-run
+stead wake --alias devmac --dry-run --timeout 5s
+```
+
+The dry run loads the configured hostname and SSH port, checks whether the TCP port is reachable, and reports whether `mac_address` and `broadcast` are configured. It does not send a Wake-on-LAN packet and does not run SSH authentication.
+
 ## Host
 
 ### `stead host status`

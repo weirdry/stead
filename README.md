@@ -67,6 +67,7 @@ stead client status
 stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 stead connect --alias devmac
+stead wake --alias devmac --dry-run
 
 stead client init --alias devmac --hostname <host-tailscale-name-or-ip> --yes
 stead client apply --dry-run --alias devmac

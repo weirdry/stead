@@ -18,6 +18,7 @@ import (
 	"github.com/ed/stead/internal/status"
 	"github.com/ed/stead/internal/ui"
 	"github.com/ed/stead/internal/verify"
+	"github.com/ed/stead/internal/wake"
 )
 
 func main() {
@@ -43,6 +44,8 @@ func run(args []string) error {
 		return runVerify(args[1:])
 	case "connect":
 		return runConnect(args[1:])
+	case "wake":
+		return runWake(args[1:])
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -86,6 +89,36 @@ func runConnect(args []string) error {
 		}
 	}
 	return connect.Run(opts)
+}
+
+func runWake(args []string) error {
+	opts := wake.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		case "--timeout":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--timeout requires a value")
+			}
+			timeout, err := time.ParseDuration(args[i+1])
+			if err != nil {
+				return err
+			}
+			opts.Timeout = timeout
+			i++
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown wake option %q", args[i])
+		}
+	}
+	return wake.Run(opts)
 }
 
 func runSetup(args []string) error {
@@ -502,6 +535,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
 	fmt.Fprintln(out, "  stead connect [--alias name]")
+	fmt.Fprintln(out, "  stead wake --dry-run [--alias name] [--timeout 3s]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
 	fmt.Fprintln(out, "  stead host status [--effective]")

@@ -152,6 +152,7 @@ Run on the client Mac:
 ```bash
 ssh devmac
 stead connect --alias devmac
+stead wake --alias devmac --dry-run
 ```
 
 The actual SSH transport and authentication are still handled by the system `ssh` command and macOS `sshd`.
