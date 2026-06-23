@@ -83,6 +83,7 @@ stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
 stead connect --alias devmac
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
 stead wake --alias devmac --dry-run
 stead wake --alias devmac
 stead connect --alias devmac --wake
@@ -135,6 +136,7 @@ sudo stead host reload --apply --confirm
 stead client init --alias devmac --hostname <tailscale-ip-or-magicdns> --user ed --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
 stead wake --alias devmac
 stead connect --alias devmac --wake
 ```

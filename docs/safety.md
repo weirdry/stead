@@ -113,6 +113,8 @@ When password auth is disabled during apply, `stead` requires `--confirm-key-log
 
 `stead wake` sends a Wake-on-LAN packet only when SSH is not already reachable and wake MAC/broadcast config is complete. It does not run SSH authentication.
 
+`stead client wake-config` updates only the local Stead config wake fields for an existing alias. It does not send network packets, edit SSH config, generate keys, or use Tailscale SSH.
+
 Current status output may warn about:
 
 - password authentication

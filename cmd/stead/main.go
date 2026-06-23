@@ -8,6 +8,7 @@ import (
 
 	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/clientinit"
+	"github.com/ed/stead/internal/clientwake"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/connect"
 	"github.com/ed/stead/internal/hostauth"
@@ -341,6 +342,9 @@ func runClient(args []string) error {
 	if len(args) >= 1 && args[0] == "init" {
 		return runClientInit(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "wake-config" {
+		return runClientWakeConfig(args[1:])
+	}
 	printUsage(os.Stderr)
 	return fmt.Errorf("unknown client command %q", joinArgs(args))
 }
@@ -475,6 +479,50 @@ func runClientInit(args []string) error {
 	return clientinit.Run(opts)
 }
 
+func runClientWakeConfig(args []string) error {
+	opts := clientwake.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--mac", "--mac-address":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("%s requires a value", args[i])
+			}
+			opts.MACAddress = args[i+1]
+			i++
+		case "--broadcast":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--broadcast requires a value")
+			}
+			opts.Broadcast = args[i+1]
+			i++
+		case "--timeout":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--timeout requires a value")
+			}
+			opts.Timeout = args[i+1]
+			i++
+		case "--interval":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--interval requires a value")
+			}
+			opts.Interval = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client wake-config option %q", args[i])
+		}
+	}
+	return clientwake.Run(opts)
+}
+
 func runConfig(args []string) error {
 	if len(args) == 0 {
 		printUsage(os.Stderr)
@@ -554,6 +602,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
 	fmt.Fprintln(out, "  stead client unapply --alias name [--dry-run]")
+	fmt.Fprintln(out, "  stead client wake-config --alias name --mac-address mac --broadcast ip [--timeout 90s] [--interval 2s] [--dry-run]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Config:")
 	fmt.Fprintln(out, "  stead config path")

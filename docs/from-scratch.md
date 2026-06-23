@@ -152,6 +152,8 @@ Run on the client Mac:
 ```bash
 ssh devmac
 stead connect --alias devmac
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
 stead wake --alias devmac --dry-run
 stead wake --alias devmac
 stead connect --alias devmac --wake

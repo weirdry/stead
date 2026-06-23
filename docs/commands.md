@@ -87,6 +87,18 @@ The dry run loads the configured hostname and SSH port, checks whether the TCP p
 
 Without `--dry-run`, if the SSH port is already reachable, `stead` exits without sending a packet. If it is not reachable, `stead` requires `mac_address` and `broadcast`, sends one Wake-on-LAN magic packet, and waits for the SSH port until the configured timeout. It still does not perform SSH authentication.
 
+### `stead client wake-config`
+
+Updates wake metadata for an existing client host entry.
+
+```bash
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --timeout 90s --interval 2s
+```
+
+This command edits only `~/.config/stead/config.toml`. It does not touch `~/.ssh/config`, generate keys, run SSH, send Wake-on-LAN packets, or use Tailscale SSH.
+
 ## Host
 
 ### `stead host status`

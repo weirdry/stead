@@ -113,6 +113,12 @@ Wake settings control the optional Wake-on-LAN flow used by `stead wake` and `st
 
 If the target SSH port is already reachable, no Wake-on-LAN packet is sent. If the target is not reachable, apply mode requires a real `mac_address` and `broadcast` before sending a packet.
 
+Use `stead client wake-config` to update these fields without hand-editing TOML:
+
+```bash
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
+```
+
 ### `mac_address`
 
 Host MAC address for Wake-on-LAN.

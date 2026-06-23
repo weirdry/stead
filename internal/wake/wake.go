@@ -90,7 +90,8 @@ func Run(opts Options) error {
 	ui.PrintKV(out, "Target", address)
 	fmt.Fprintln(out)
 
-	ui.PrintSection(out, "Reachability")
+	ui.PrintSection(out, "Initial reachability probe")
+	ui.PrintKV(out, "Probe timeout", checkTimeout.String())
 	if reachable {
 		ui.PrintKV(out, "SSH port", ui.StateDetail(out, "ok", "reachable"))
 	} else {
@@ -101,8 +102,8 @@ func Run(opts Options) error {
 	ui.PrintSection(out, "Wake config")
 	ui.PrintKV(out, "MAC address", wakeValue(out, host.Wake.MACAddress))
 	ui.PrintKV(out, "Broadcast", wakeValue(out, host.Wake.Broadcast))
-	ui.PrintKV(out, "Timeout", valueOrDefault(host.Wake.Timeout, "90s"))
-	ui.PrintKV(out, "Interval", valueOrDefault(host.Wake.Interval, "2s"))
+	ui.PrintKV(out, "Wake wait timeout", valueOrDefault(host.Wake.Timeout, "90s"))
+	ui.PrintKV(out, "Wake poll interval", valueOrDefault(host.Wake.Interval, "2s"))
 	fmt.Fprintln(out)
 
 	if !opts.DryRun {
