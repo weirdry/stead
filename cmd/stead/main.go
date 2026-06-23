@@ -9,6 +9,7 @@ import (
 	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/clientinit"
 	"github.com/ed/stead/internal/config"
+	"github.com/ed/stead/internal/connect"
 	"github.com/ed/stead/internal/hostauth"
 	"github.com/ed/stead/internal/hostharden"
 	"github.com/ed/stead/internal/hostops"
@@ -40,6 +41,8 @@ func run(args []string) error {
 		return runSetup(args[1:])
 	case "verify":
 		return runVerify(args[1:])
+	case "connect":
+		return runConnect(args[1:])
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -65,6 +68,24 @@ func parseGlobalOptions(args []string) []string {
 		out = append(out, arg)
 	}
 	return out
+}
+
+func runConnect(args []string) error {
+	opts := connect.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown connect option %q", args[i])
+		}
+	}
+	return connect.Run(opts)
 }
 
 func runSetup(args []string) error {
@@ -480,6 +501,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead status")
 	fmt.Fprintln(out, "  stead setup --alias name --dry-run [--verify]")
 	fmt.Fprintln(out, "  stead verify --alias name [--timeout 10s]")
+	fmt.Fprintln(out, "  stead connect [--alias name]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
 	fmt.Fprintln(out, "  stead host status [--effective]")

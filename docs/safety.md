@@ -105,6 +105,8 @@ When password auth is disabled during apply, `stead` requires `--confirm-key-log
 
 `stead host validate` is read-only. `stead host reload --dry-run` prints manual commands only and does not call `launchctl`. `stead host reload --apply --confirm` validates sshd before calling `launchctl kickstart`.
 
+`stead connect` execs the system `ssh` command for a configured alias. It does not replace SSH authentication, store credentials, or use Tailscale SSH.
+
 Current status output may warn about:
 
 - password authentication

@@ -82,6 +82,7 @@ stead --no-color status
 stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
+stead connect --alias devmac
 stead config path
 stead config show
 stead config init
@@ -114,7 +115,6 @@ stead host install
 stead host uninstall
 stead client uninstall
 stead wake --alias devmac
-stead connect --alias devmac
 stead connect --alias devmac --wake
 ```
 

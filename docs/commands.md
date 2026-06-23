@@ -53,6 +53,23 @@ stead verify --alias devmac --timeout 15s
 
 This runs the system `ssh` command with `BatchMode=yes`.
 
+### `stead connect`
+
+Execs the normal system SSH client for a configured alias.
+
+```bash
+stead connect --alias devmac
+stead connect
+```
+
+If `--alias` is omitted, `stead` uses the default alias from `~/.config/stead/config.toml`.
+
+This command does not replace SSH authentication, does not use Tailscale SSH, and does not store credentials. It checks that the alias exists in both `stead` config and `~/.ssh/config`, then execs:
+
+```bash
+ssh <alias>
+```
+
 ## Host
 
 ### `stead host status`
