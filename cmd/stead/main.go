@@ -8,6 +8,7 @@ import (
 
 	"github.com/ed/stead/internal/clientconfig"
 	"github.com/ed/stead/internal/clientinit"
+	"github.com/ed/stead/internal/clientuninstall"
 	"github.com/ed/stead/internal/clientwake"
 	"github.com/ed/stead/internal/config"
 	"github.com/ed/stead/internal/connect"
@@ -423,6 +424,9 @@ func runClient(args []string) error {
 	if len(args) >= 1 && args[0] == "unapply" {
 		return runClientUnapply(args[1:])
 	}
+	if len(args) >= 1 && args[0] == "uninstall" {
+		return runClientUninstall(args[1:])
+	}
 	if len(args) >= 1 && args[0] == "init" {
 		return runClientInit(args[1:])
 	}
@@ -512,6 +516,30 @@ func runClientUnapply(args []string) error {
 		return err
 	}
 	return clientconfig.WriteUnapply(os.Stdout, clientconfig.DefaultSSHConfigPath(home), alias, dryRun)
+}
+
+func runClientUninstall(args []string) error {
+	opts := clientuninstall.Options{Out: os.Stdout}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--alias":
+			if i+1 >= len(args) || args[i+1] == "" {
+				return fmt.Errorf("--alias requires a value")
+			}
+			opts.Alias = args[i+1]
+			i++
+		case "--dry-run":
+			opts.DryRun = true
+		case "--apply":
+			opts.Apply = true
+		case "--confirm":
+			opts.Confirm = true
+		default:
+			printUsage(os.Stderr)
+			return fmt.Errorf("unknown client uninstall option %q", args[i])
+		}
+	}
+	return clientuninstall.Run(opts)
 }
 
 func runClientInit(args []string) error {
@@ -689,6 +717,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead client plan [--alias name]")
 	fmt.Fprintln(out, "  stead client apply [--dry-run] [--alias name]")
 	fmt.Fprintln(out, "  stead client unapply --alias name [--dry-run]")
+	fmt.Fprintln(out, "  stead client uninstall --alias name (--dry-run|--apply) [--confirm]")
 	fmt.Fprintln(out, "  stead client wake-config --alias name --mac-address mac --broadcast ip [--timeout 90s] [--interval 2s] [--dry-run]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Config:")

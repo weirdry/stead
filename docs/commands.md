@@ -297,6 +297,17 @@ stead client unapply --alias devmac
 
 It does not remove arbitrary non-stead SSH config entries.
 
+### `stead client uninstall`
+
+Runs the client-side uninstall flow for an alias.
+
+```bash
+stead client uninstall --alias devmac --dry-run
+stead client uninstall --alias devmac --apply --confirm
+```
+
+This removes only the managed SSH config block. It reports the Stead config entry and identity key paths left behind, but does not delete `~/.config/stead/config.toml`, private keys, public keys, host `authorized_keys` entries, or arbitrary SSH config.
+
 ## Config
 
 ### `stead config path`

@@ -41,6 +41,8 @@ Host <alias>
 
 `stead client unapply` removes only the matching managed block.
 
+`stead client uninstall --apply --confirm` removes only the matching managed SSH config block and reports remaining config/key files. It does not delete private keys or `~/.config/stead/config.toml`.
+
 `stead host authorize` and `stead host unauthorize` match public key material, not only comments. This avoids duplicate keys with different comments and removes only the intended key.
 
 ## Dry Run First
@@ -51,6 +53,7 @@ Most write-capable commands support dry-run:
 stead client init --alias devmac --hostname <host> --dry-run --yes
 stead client apply --dry-run --alias devmac
 stead client unapply --dry-run --alias devmac
+stead client uninstall --alias devmac --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ...' --dry-run
 stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ...' --dry-run
 ./install.sh --dry-run

@@ -78,6 +78,7 @@ stead connect --alias devmac --wake
 stead client init --alias devmac --hostname <host-tailscale-name-or-ip> --yes
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
+stead client uninstall --alias devmac --dry-run
 
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'

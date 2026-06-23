@@ -214,6 +214,8 @@ Remove the managed client SSH config block:
 ```bash
 stead client unapply --alias devmac --dry-run
 stead client unapply --alias devmac
+stead client uninstall --alias devmac --dry-run
+stead client uninstall --alias devmac --apply --confirm
 ```
 
 Remove the authorized public key from the host:

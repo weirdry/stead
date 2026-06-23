@@ -109,6 +109,8 @@ stead client plan --alias devmac
 stead client apply --dry-run --alias devmac
 stead client apply --alias devmac
 stead client unapply --alias devmac --dry-run
+stead client uninstall --alias devmac --dry-run
+stead client uninstall --alias devmac --apply --confirm
 stead host install --dry-run --tmux-session main
 stead host install --apply --tmux-session main
 stead host uninstall --dry-run
@@ -117,11 +119,7 @@ stead host uninstall --apply --confirm
 
 ## Future CLI
 
-The following commands remain design targets and are not implemented yet:
-
-```bash
-stead client uninstall
-```
+The initial design targets are now implemented. Future commands should be justified by concrete workflow gaps.
 
 Example flags:
 
