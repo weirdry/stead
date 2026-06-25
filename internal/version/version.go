@@ -15,11 +15,20 @@ var (
 	Date    = "unknown"
 )
 
+const banner = "███████╗████████╗███████╗ █████╗ ██████╗ \n" +
+	"██╔════╝╚══██╔══╝██╔════╝██╔══██╗██╔══██╗\n" +
+	"███████╗   ██║   █████╗  ███████║██║  ██║\n" +
+	"╚════██║   ██║   ██╔══╝  ██╔══██║██║  ██║\n" +
+	"███████║   ██║   ███████╗██║  ██║██████╔╝\n" +
+	"╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═════╝ "
+
 func Print(out io.Writer) {
 	if out == nil {
 		return
 	}
 	info := Info()
+	printBanner(out)
+	fmt.Fprintln(out)
 	ui.PrintTitle(out, "Stead version")
 	fmt.Fprintln(out)
 	ui.PrintKV(out, "Version", info.Version)
@@ -27,6 +36,11 @@ func Print(out io.Writer) {
 	ui.PrintKV(out, "Build date", info.Date)
 	ui.PrintKV(out, "Go", runtime.Version())
 	ui.PrintKV(out, "OS/Arch", runtime.GOOS+"/"+runtime.GOARCH)
+}
+
+func printBanner(out io.Writer) {
+	fmt.Fprintln(out, ui.Title(out, banner))
+	fmt.Fprintln(out, ui.Detail(out, "normal OpenSSH remote dev; Tailscale SSH is not used"))
 }
 
 type BuildInfo struct {

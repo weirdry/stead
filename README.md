@@ -1,5 +1,14 @@
 # Stead
 
+```text
+███████╗████████╗███████╗ █████╗ ██████╗
+██╔════╝╚══██╔══╝██╔════╝██╔══██╗██╔══██╗
+███████╗   ██║   █████╗  ███████║██║  ██║
+╚════██║   ██║   ██╔══╝  ██╔══██║██║  ██║
+███████║   ██║   ███████╗██║  ██║██████╔╝
+╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═════╝
+```
+
 `stead` is a personal CLI for reproducible remote-development access to a trusted Mac.
 
 It does not replace SSH. It helps set up and inspect normal OpenSSH access over a private network such as Tailscale.
