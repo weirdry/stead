@@ -34,9 +34,11 @@ From a local clone:
 ```bash
 git clone https://github.com/weirdry/stead.git ~/src/stead
 cd ~/src/stead
-./install.sh --dry-run
-./install.sh
+just install-dry-run
+just install
 ```
+
+`just install` wraps `./install.sh`. If `just` is not available, run `./install.sh --dry-run` and `./install.sh` directly.
 
 The default install target is:
 
@@ -55,14 +57,14 @@ Update:
 ```bash
 cd ~/src/stead
 git pull origin main
-./install.sh
+just install
 ```
 
 Uninstall the installed binary only:
 
 ```bash
-./uninstall.sh --dry-run
-./uninstall.sh
+just uninstall-dry-run
+just uninstall
 ```
 
 ## Happy Path
@@ -71,7 +73,7 @@ Use the same local checkout on both Macs:
 
 ```bash
 git pull origin main
-./install.sh
+just install
 ```
 
 On the host Mac, inspect current SSH server state:
@@ -155,8 +157,13 @@ This repo uses `just`.
 
 ```bash
 just
+just fmt
+just test
 just check
 just build
 just install-dry-run
 just install
+just uninstall-dry-run
+just uninstall
+just clean
 ```

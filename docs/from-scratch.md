@@ -16,7 +16,7 @@ Install or update `stead` first:
 ```bash
 cd ~/src/stead
 git pull origin main
-./install.sh
+just install
 ```
 
 ## 1. Inspect The Host Mac
@@ -266,6 +266,6 @@ stead host uninstall --apply --confirm
 Uninstall only the `stead` binary:
 
 ```bash
-./uninstall.sh --dry-run
-./uninstall.sh
+just uninstall-dry-run
+just uninstall
 ```

@@ -374,7 +374,7 @@ Private/local install is preferred:
 ```bash
 git clone https://github.com/weirdry/stead.git ~/src/stead
 cd ~/src/stead
-./install.sh
+just install
 ```
 
 Install targets:
@@ -384,14 +384,14 @@ Install targets:
 ~/.config/stead/config.toml
 ```
 
-`./install.sh` builds the local checkout and copies the binary to `~/.local/bin/stead` by default. It must not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
+`just install` wraps `./install.sh`, which builds the local checkout and copies the binary to `~/.local/bin/stead` by default. Installation must not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
 
 No Homebrew formula or public package registry is required.
 
 Preview:
 
 ```bash
-./install.sh --dry-run
+just install-dry-run
 ```
 
 If needed, users can choose a different binary target:
@@ -405,17 +405,17 @@ Updates:
 ```bash
 cd ~/src/stead
 git pull
-./install.sh
+just install
 ```
 
 Uninstall:
 
 ```bash
-./uninstall.sh --dry-run
-./uninstall.sh
+just uninstall-dry-run
+just uninstall
 ```
 
-`./uninstall.sh` removes only the installed binary. It must leave `~/.config/stead/config.toml`, generated SSH keys, managed SSH config blocks, and `authorized_keys` entries alone. Those are handled by explicit stead commands such as `stead client unapply` and `stead host unauthorize`.
+`just uninstall` wraps `./uninstall.sh`, which removes only the installed binary. It must leave `~/.config/stead/config.toml`, generated SSH keys, managed SSH config blocks, and `authorized_keys` entries alone. Those are handled by explicit stead commands such as `stead client unapply` and `stead host unauthorize`.
 
 ## Implementation
 

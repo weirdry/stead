@@ -56,8 +56,8 @@ stead client unapply --dry-run --alias devmac
 stead client uninstall --alias devmac --dry-run
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ...' --dry-run
 stead host unauthorize --alias devmac --public-key 'ssh-ed25519 ...' --dry-run
-./install.sh --dry-run
-./uninstall.sh --dry-run
+just install-dry-run
+just uninstall-dry-run
 ```
 
 Use dry-run before applying changes.
@@ -84,7 +84,7 @@ stead = setup/status/undo automation
 
 ## Install And Uninstall
 
-`./install.sh` builds the local checkout and copies the binary to:
+`just install` wraps `./install.sh`, which builds the local checkout and copies the binary to:
 
 ```text
 ~/.local/bin/stead
@@ -92,7 +92,7 @@ stead = setup/status/undo automation
 
 It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, firewall, or macOS settings.
 
-`./uninstall.sh` removes only the installed binary. It does not remove config, keys, managed SSH blocks, or authorized keys.
+`just uninstall` wraps `./uninstall.sh`, which removes only the installed binary. It does not remove config, keys, managed SSH blocks, or authorized keys.
 
 ## Host Session Install
 
