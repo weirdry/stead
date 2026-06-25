@@ -146,23 +146,46 @@ When everything is complete, it should report SSH login as OK and suggest:
 ssh devmac
 ```
 
-## 8. Connect
+## 8. Diagnose And Connect
 
 Run on the client Mac:
 
 ```bash
+stead doctor --alias devmac --verify
 ssh devmac
 stead connect --alias devmac
-stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
-stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
-stead wake --alias devmac --dry-run
-stead wake --alias devmac
-stead connect --alias devmac --wake
 ```
 
 The actual SSH transport and authentication are still handled by the system `ssh` command and macOS `sshd`.
 
-## 9. Preview Host Hardening
+## 9. Optional Wake Flow
+
+Wake-on-LAN is useful when the client is on the same LAN as the host. Tailscale provides the stable SSH address after the host wakes; Tailscale SSH is still not used.
+
+First find the host LAN MAC address and LAN broadcast address on the host Mac:
+
+```bash
+iface="$(route get default | awk '/interface:/{print $2; exit}')"
+ifconfig "$iface" | awk '
+  /ether / { print "mac_address="$2 }
+  /inet / && /broadcast/ {
+    for (i=1; i<=NF; i++) {
+      if ($i=="broadcast") print "broadcast="$(i+1)
+    }
+  }
+'
+```
+
+Then configure and test wake metadata on the client Mac:
+
+```bash
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
+stead wake --alias devmac --dry-run
+stead connect --alias devmac --wake
+```
+
+## 10. Preview Host Hardening
 
 After key login works, preview the host sshd hardening drop-in:
 
@@ -193,7 +216,7 @@ Apply the reload only after keeping a local host session open and confirming cli
 sudo stead host reload --apply --confirm
 ```
 
-## 10. Optional Host Session Continuity
+## 11. Optional Host Session Continuity
 
 Preview the managed tmux auto-attach block on the host:
 

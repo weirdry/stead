@@ -117,11 +117,7 @@ stead host uninstall --dry-run
 stead host uninstall --apply --confirm
 ```
 
-## Future CLI
-
-The initial design targets are now implemented. Future commands should be justified by concrete workflow gaps.
-
-Example flags:
+## Applied Examples
 
 ```bash
 stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
@@ -353,9 +349,9 @@ Before disabling password authentication:
 
 `stead host validate` is read-only. `stead host reload --dry-run` prints manual validation, reload, login-test, and rollback commands without calling `launchctl`. `stead host reload --apply --confirm` validates with `/usr/sbin/sshd -t` before calling `launchctl kickstart -k system/com.openssh.sshd`.
 
-`stead uninstall` must remove only what `stead` created.
+`./uninstall.sh` removes only the installed binary. Command-level cleanup is explicit: `stead client uninstall` removes the managed client SSH block, `stead host unauthorize` removes a specific public key, `stead host harden --unapply` removes the managed sshd drop-in, and `stead host uninstall` removes the managed tmux auto-attach block.
 
-It should not delete user private keys by default. It may remove managed references and ask before deleting generated keys.
+Generated private keys are not deleted by default.
 
 ## CLI UX
 
@@ -368,7 +364,7 @@ CLI output should stay quiet, readable, and script-friendly.
 - Enable color only for interactive terminal output.
 - Disable color when output is redirected, `TERM=dumb`, `NO_COLOR` is set, or `--no-color` is passed.
 - Keep normal command output stable and copyable.
-- Reserve animation for future long-running interactive waits such as wake/connect.
+- Avoid animation in normal command output; keep long-running wake/connect flows copyable and stable.
 
 ## Install Model
 
@@ -420,9 +416,9 @@ Uninstall:
 
 `./uninstall.sh` removes only the installed binary. It must leave `~/.config/stead/config.toml`, generated SSH keys, managed SSH config blocks, and `authorized_keys` entries alone. Those are handled by explicit stead commands such as `stead client unapply` and `stead host unauthorize`.
 
-## Recommended Implementation
+## Implementation
 
-Use Go.
+`stead` is implemented in Go.
 
 Reasons:
 
@@ -432,7 +428,7 @@ Reasons:
 - Good standard library support for file parsing, TCP checks, and process execution.
 - No runtime dependency.
 
-Potential repo layout:
+Repo layout:
 
 ```text
 stead/
@@ -446,26 +442,16 @@ stead/
   docs/
     design.md
   cmd/stead/main.go
-  internal/host/
-  internal/client/
   internal/sshconfig/
-  internal/managedfile/
   internal/tailscale/
   internal/wake/
-  internal/tmux/
-  internal/checks/
+  internal/doctor/
+  internal/clientconfig/
+  internal/clientinit/
+  internal/clientuninstall/
+  internal/clientwake/
+  internal/hostauth/
+  internal/hostharden/
+  internal/hostinstall/
+  internal/hostops/
 ```
-
-## Suggested Build Order
-
-1. `stead status`
-2. `stead host status`
-3. `stead client status`
-4. Managed file/block helpers
-5. `stead client install`
-6. `stead connect`
-7. `stead wake`
-8. `stead connect --wake`
-9. `stead host install`
-10. `stead host harden`
-11. `stead uninstall`

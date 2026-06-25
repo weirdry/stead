@@ -102,6 +102,12 @@ Options:
 
 `stead client unapply` removes only `stead` managed blocks. It will not remove arbitrary pre-existing `Host devmac` entries.
 
+For a more explicit client cleanup preview, use:
+
+```bash
+stead client uninstall --alias stead-devmac --dry-run
+```
+
 ## Rollback
 
 On the client Mac:
@@ -109,6 +115,7 @@ On the client Mac:
 ```bash
 stead client unapply --alias stead-devmac --dry-run
 stead client unapply --alias stead-devmac
+stead client uninstall --alias stead-devmac --dry-run
 ```
 
 On the host Mac:

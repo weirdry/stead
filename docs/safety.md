@@ -15,7 +15,7 @@
 - macOS Remote Login state
 - launchd service state
 - firewall settings
-- system sshd hardening not explicitly installed by a future `stead` host command
+- system sshd hardening not explicitly installed by `stead host harden`
 
 ## What Stead May Create Or Modify
 
@@ -104,7 +104,7 @@ It does not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, la
 
 ## Host Hardening
 
-Host hardening is intentionally not automatic yet.
+Host hardening is intentionally not automatic.
 
 `stead host harden --dry-run` prints the proposed `/etc/ssh/sshd_config.d/stead.conf` content without changing files.
 

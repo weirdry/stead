@@ -142,6 +142,12 @@ It will not remove arbitrary existing `Host <alias>` entries.
 
 This is intentional. Remove old manual SSH config by editing `~/.ssh/config` yourself after confirming it is safe.
 
+For managed aliases, `stead client uninstall` gives a higher-level cleanup preview:
+
+```bash
+stead client uninstall --alias <alias> --dry-run
+```
+
 ## Public Key Already Exists
 
 `stead host authorize` matches public key material.

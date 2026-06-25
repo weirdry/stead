@@ -56,40 +56,71 @@ Uninstall the installed binary only:
 ./uninstall.sh
 ```
 
-## Common Commands
+## Happy Path
+
+Use the same local checkout on both Macs:
+
+```bash
+git pull origin main
+./install.sh
+```
+
+On the host Mac, inspect current SSH server state:
+
+```bash
+stead host status
+```
+
+On the client Mac, create a local alias and key:
+
+```bash
+stead client init --alias devmac --hostname <host-tailscale-name-or-ip> --yes
+stead client apply --dry-run --alias devmac
+stead client apply --alias devmac
+```
+
+On the host Mac, authorize the printed client public key:
+
+```bash
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
+stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
+```
+
+On the client Mac, verify and connect:
+
+```bash
+stead verify --alias devmac
+stead doctor --alias devmac --verify
+stead connect --alias devmac
+```
+
+After key login works, optionally harden the host:
+
+```bash
+stead host harden --dry-run --user ed --disable-password
+sudo stead host harden --apply --user ed --disable-password --confirm-key-login
+sudo stead host reload --apply --confirm
+```
+
+Optional wake flow, configured on the client:
+
+```bash
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
+stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
+stead wake --alias devmac --dry-run
+stead connect --alias devmac --wake
+```
+
+## Useful Commands
 
 ```bash
 stead status
 stead host status
 stead host status --effective
 stead client status
-stead doctor
-stead doctor --alias devmac --verify
-
-stead setup --alias devmac --dry-run
+stead doctor --alias devmac
 stead setup --alias devmac --dry-run --verify
-stead connect --alias devmac
-stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast> --dry-run
-stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
-stead wake --alias devmac --dry-run
-stead wake --alias devmac
-stead connect --alias devmac --wake
-
-stead client init --alias devmac --hostname <host-tailscale-name-or-ip> --yes
-stead client apply --dry-run --alias devmac
-stead client apply --alias devmac
 stead client uninstall --alias devmac --dry-run
-
-stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac' --dry-run
-stead host authorize --alias devmac --public-key 'ssh-ed25519 ... stead devmac'
-stead host harden --dry-run --user ed --disable-password
-stead host harden --unapply --dry-run
-stead host validate
-stead host reload --dry-run
-sudo stead host reload --apply --confirm
-
-stead verify --alias devmac
-ssh devmac
 ```
 
 Use `--no-color` or `NO_COLOR=1` for plain output:

@@ -32,7 +32,7 @@ stead setup --alias devmac --dry-run
 stead setup --alias devmac --dry-run --verify
 ```
 
-`setup` currently requires `--dry-run`; it is a planner, not an apply command.
+`setup` requires `--dry-run`; it is a planner, not an apply command.
 
 With `--verify`, it runs the same non-interactive SSH check as `stead verify`. If login succeeds, host authorization is considered proven.
 
