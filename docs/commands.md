@@ -119,7 +119,7 @@ Prints the local binary version and build metadata.
 stead version
 ```
 
-Local clone builds report `dev` unless release build metadata is injected at build time.
+Local builds made through `just build` or `just install` inject git-derived version metadata when available.
 
 ## Host
 

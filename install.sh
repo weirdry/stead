@@ -25,14 +25,14 @@ if [ "$dry_run" -eq 1 ]; then
   echo "source: $src"
   echo "target: $dst"
   if [ -z "${STEAD_BIN:-}" ]; then
-    echo "build: would run go build -o bin/stead ./cmd/stead"
+    echo "build: would run sh scripts/build.sh bin/stead"
   fi
   echo "install: would copy binary to target"
   exit 0
 fi
 
 if [ -z "${STEAD_BIN:-}" ]; then
-  (cd "$script_dir" && go build -o bin/stead ./cmd/stead)
+  (cd "$script_dir" && sh scripts/build.sh bin/stead)
 fi
 
 if [ ! -x "$src" ]; then

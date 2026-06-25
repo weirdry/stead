@@ -30,21 +30,10 @@ The core workflow is implemented:
 - tmux auto-attach install and uninstall helpers
 - conservative client uninstall flow
 - local install and uninstall through `just`
+- git-derived version metadata for local builds and installs
 - user-facing docs for setup, commands, config, safety, troubleshooting, and migration
 
 ## Optional Future Work
-
-### Release Metadata
-
-Local builds currently report `Version: dev` unless metadata is injected at build time.
-
-Potential work:
-
-- add a `just release-build` recipe
-- inject version, commit, and date with Go `-ldflags`
-- optionally add lightweight git tag guidance
-
-This is cosmetic and operationally useful, but not required for local clone usage.
 
 ### Integration Testing
 

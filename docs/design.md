@@ -384,7 +384,7 @@ Install targets:
 ~/.config/stead/config.toml
 ```
 
-`just install` wraps `./install.sh`, which builds the local checkout and copies the binary to `~/.local/bin/stead` by default. Installation must not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
+`just install` wraps `./install.sh`, which builds the local checkout and copies the binary to `~/.local/bin/stead` by default. Local builds inject git-derived version metadata when available. Installation must not modify SSH configuration, SSH keys, `authorized_keys`, Tailscale, launchd, or macOS settings.
 
 No Homebrew formula or public package registry is required.
 
@@ -440,6 +440,8 @@ stead/
     build.just
     check.just
     install.just
+  scripts/
+    build.sh
   docs/
     design.md
   cmd/stead/main.go
