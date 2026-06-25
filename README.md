@@ -150,6 +150,7 @@ stead --no-color status
 - [Configuration reference](docs/config.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Design notes](docs/design.md)
+- [Roadmap](docs/roadmap.md)
 
 ## Development
 
