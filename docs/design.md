@@ -84,6 +84,7 @@ stead setup --alias devmac --dry-run --verify
 stead verify --alias devmac
 stead doctor --alias devmac
 stead doctor --alias devmac --verify
+stead version
 stead connect --alias devmac
 stead client wake-config --alias devmac --mac-address <host-lan-mac> --broadcast <lan-broadcast>
 stead wake --alias devmac --dry-run

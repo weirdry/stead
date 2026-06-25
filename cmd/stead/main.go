@@ -22,6 +22,7 @@ import (
 	"github.com/ed/stead/internal/status"
 	"github.com/ed/stead/internal/ui"
 	"github.com/ed/stead/internal/verify"
+	"github.com/ed/stead/internal/version"
 	"github.com/ed/stead/internal/wake"
 )
 
@@ -52,6 +53,13 @@ func run(args []string) error {
 		return runWake(args[1:])
 	case "doctor":
 		return runDoctor(args[1:])
+	case "version":
+		if len(args) != 1 {
+			printUsage(os.Stderr)
+			return fmt.Errorf("version does not accept options")
+		}
+		version.Print(os.Stdout)
+		return nil
 	case "host":
 		return runHost(args[1:])
 	case "client":
@@ -699,6 +707,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  stead connect [--alias name] [--wake]")
 	fmt.Fprintln(out, "  stead wake [--dry-run] [--alias name] [--timeout 90s]")
 	fmt.Fprintln(out, "  stead doctor [--alias name] [--verify]")
+	fmt.Fprintln(out, "  stead version")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Host:")
 	fmt.Fprintln(out, "  stead host status [--effective]")

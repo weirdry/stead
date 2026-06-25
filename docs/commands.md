@@ -111,6 +111,16 @@ stead doctor --alias devmac --verify
 
 Without `--verify`, `doctor` does not attempt SSH login. With `--verify`, it runs the same BatchMode OpenSSH login check as `stead verify`.
 
+### `stead version`
+
+Prints the local binary version and build metadata.
+
+```bash
+stead version
+```
+
+Local clone builds report `dev` unless release build metadata is injected at build time.
+
 ## Host
 
 ### `stead host status`

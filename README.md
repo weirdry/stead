@@ -121,6 +121,7 @@ stead client status
 stead doctor --alias devmac
 stead setup --alias devmac --dry-run --verify
 stead client uninstall --alias devmac --dry-run
+stead version
 ```
 
 Use `--no-color` or `NO_COLOR=1` for plain output:
